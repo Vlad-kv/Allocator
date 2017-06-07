@@ -1,6 +1,11 @@
 #ifndef CLUSTER_H
 #define CLUSTER_H
 
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+
+#include <cassert>
 
 class cluster {
 private:
@@ -37,7 +42,7 @@ public:
 		
 		
 		get_rang(storage) = rang;
-//		get_prev(storage)
+//		get_prev(storage )
 		
 		
 	}
