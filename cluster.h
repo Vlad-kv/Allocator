@@ -4,50 +4,177 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
-
 #include <cassert>
+#include <sys/mman.h>
+#include <cstring>
+
+#include "debug.h"
+
+struct test_struct {
+	int val;
+	test_struct(int val)
+	: val(val) {
+	}
+};
 
 class cluster {
 private:
-	static const int32_t MAX_RANG = 20;
+	static const int32_t MAX_RANG = 22;
 	static const int32_t MIN_RANG = 6;
 	static const int32_t SHIFT = 16;
-	static const int32_t UNDEFINED = -MAX_RANG;
-	
+	static const int32_t SERV_DATA_SIZE = 8;
+
+	typedef long long ll;
+
+	bool is_initialized_str = 0;
+
 	char *storage;
 	int32_t rang;
-	int32_t size;
+	char* levels[MAX_RANG + 1];
 	
-	int32_t levels[MAX_RANG + 1];
-	
-	int32_t &get_rang(char *ptr) {
-		return *((int32_t*)ptr);
+	ll get_rang(char *ptr) {
+		return *(ll*)ptr;
 	}
-	int32_t &get_prev(char *ptr) {
-		return *((int32_t*)ptr + 1);
+	void set_rang(char *ptr, ll val) {
+		*(ll*)ptr = val;
 	}
-	int32_t &get_next(char *ptr) {
-		return *((int32_t*)ptr + 2);
+	char* get_prev(char *ptr) {
+		return *(char**)(ptr + 1 * sizeof(ll));
 	}
-	
+	void set_prev(char *ptr, char* val) {
+		*(char**)(ptr + 1 * sizeof(ll)) = val;
+	}
+	char* get_next(char *ptr) {
+		return *(char**)(ptr + 2 * sizeof(ll));
+	}
+	char* set_next(char *ptr, char* val) {
+		*(char**)(ptr + 2 * sizeof(ll)) = val;
+	}
+
+	void cut(char* block) {
+		// print("  In cut: ", block - storage, "\n");
+		char* prev = get_prev(block);
+		char* next = get_next(block);
+
+		// print("  ", (ll)(prev - storage), " ", (ll)(next - storage), "\n");
+
+		if (prev < storage) {
+			levels[storage - prev] = next;
+		} else {
+			set_next(prev, next);
+		}
+		if (next != nullptr) {
+			set_prev(next, prev);
+		}
+		// print("  After cut\n");
+	}
+
+	void add_to_begin(int level, char* block) {
+		assert(level == get_rang(block));
+		set_next(block, levels[level]);
+		set_prev(block, storage - level);
+		if (levels[level] != nullptr) {
+			set_prev(levels[level], block);
+		}
+		levels[level] = block;
+	}
+
+	char* split(char* block, ll neded_level) {
+		ll level = get_rang(block);
+		cut(block);
+		while (level > neded_level) {
+			level--;
+			char* twin = block + (1<<level);
+			set_rang(twin, level);
+
+			// print("cutted twin: ", twin - storage, "\n");
+
+			add_to_begin(level, twin);
+		}
+		return block;
+	}
+
 public:
-	cluster(char *storage, int32_t rang)
-	: storage(storage), rang(rang) {
-		assert((((int64_t)storage) & 7) == 0);
+
+	bool is_initialized() {
+		return is_initialized_str;
+	}
+
+	void init(int32_t rang) {
+		assert(!is_initialized_str);
+
+		// print("In init   \n##########\n##########\n##########\n###########\n\n\n\n");
+
+		is_initialized_str = true;
+		this->rang = rang;
+
 		assert((MIN_RANG <= rang) && (rang <= MAX_RANG));
 		
+		storage = (char*)mmap(nullptr, 1<<rang, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
 		for (int w = MIN_RANG; w <= rang; w++) {
-			
+			levels[w] = nullptr;
 		}
+		levels[rang] = storage;
 		
-		
-		get_rang(storage) = rang;
-//		get_prev(storage )
-		
-		
+		set_rang(storage, rang);
+		set_prev(storage, storage - rang);
+		set_next(storage, nullptr);
 	}
-	
-	
+
+	char *alloc(int32_t size) {
+		// print("In alloc: ", size, "\n");
+		
+		int power = 1<<MIN_RANG;
+		int level = MIN_RANG;
+		while (power - SERV_DATA_SIZE < size) {
+			level++;
+			power <<= 1;
+		}
+		int optimal_level = level;
+		// print(" optimal_level: ", optimal_level, "\n");
+		assert(level <= rang);
+		while ((level <= rang) && (levels[level] == nullptr)) {
+			// print(" ", level, "  ", ((ll)levels[level]), "  !!!\n");
+			level++;
+		}
+		// print(" finded level: ", level, "\n");
+		if (level > rang) {
+			print("return nullptr\n");
+			return nullptr;
+		}
+		char* to_alloc = split(levels[level], optimal_level);
+		set_rang(to_alloc, -optimal_level);
+
+		// print(" allocated: ", to_alloc - storage, "\n");
+		// print("----------------------------------\n\n");
+		return to_alloc + SERV_DATA_SIZE;
+	}
+
+	void free(char* ptr) {
+		// print("In free: \n");
+		ptr -= 8;
+		ll block_rang = -get_rang(ptr);
+		while (block_rang < rang) {
+			char* twin = ((ptr - storage) ^ (1<<block_rang)) + storage;
+
+			// print(" ", block_rang, "  twin rang: ", get_rang(twin),  " \n");
+
+			if (get_rang(twin) < 0) {
+				break;
+			}
+			cut(twin);
+			ptr = std::min(ptr, twin);
+			block_rang++;
+		}
+		set_rang(ptr, block_rang);
+		add_to_begin(block_rang, ptr);
+		// print("------------------------\n");
+	}
+
+	~cluster() {
+		munmap((void*)storage, 1<<rang);
+	}
 };
 
 #endif // CLUSTER_H
