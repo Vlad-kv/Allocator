@@ -4,7 +4,6 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
-#include <cassert>
 #include <sys/mman.h>
 #include <cstring>
 
@@ -19,7 +18,7 @@ struct test_struct {
 
 class cluster {
 private:
-	static const int32_t MAX_RANG = 22;
+	static const int32_t MAX_RANG = 29;
 	static const int32_t MIN_RANG = 6;
 	static const int32_t SHIFT = 16;
 	static const int32_t SERV_DATA_SIZE = 8;
@@ -51,11 +50,30 @@ private:
 		*(char**)(ptr + 2 * sizeof(ll)) = val;
 	}
 
+	bool is_valid_ptr(char *ptr) {// debug
+		return ((storage <= ptr) && (ptr < storage + (1 << rang)));
+	}
+	bool is_valid_rang(int rang) {
+		return ((MIN_RANG <= rang) && (rang <= this->rang));
+	}
+
+	void print_state() {// debug
+		for (int w = rang; w >= MIN_RANG; w--) {
+			print(w, " : ");
+			for (char* e = levels[w]; e != nullptr; e = get_next(e)) {
+				my_assert((MIN_RANG <= get_rang(e)) && (get_rang(e) <= rang), "incorrect rang");
+
+				print(e - storage, " ", e - storage + (1<<w), " | ");
+			}
+			print("\n");
+		}
+		print("\n");
+	}
+
 	void cut(char* block) {
 		// print("  In cut: ", block - storage, "\n");
 		char* prev = get_prev(block);
 		char* next = get_next(block);
-
 		// print("  ", (ll)(prev - storage), " ", (ll)(next - storage), "\n");
 
 		if (prev < storage) {
@@ -70,7 +88,7 @@ private:
 	}
 
 	void add_to_begin(int level, char* block) {
-		assert(level == get_rang(block));
+		my_assert(level == get_rang(block));
 		set_next(block, levels[level]);
 		set_prev(block, storage - level);
 		if (levels[level] != nullptr) {
@@ -86,7 +104,6 @@ private:
 			level--;
 			char* twin = block + (1<<level);
 			set_rang(twin, level);
-
 			// print("cutted twin: ", twin - storage, "\n");
 
 			add_to_begin(level, twin);
@@ -101,14 +118,13 @@ public:
 	}
 
 	void init(int32_t rang) {
-		assert(!is_initialized_str);
-
+		my_assert(!is_initialized_str);
 		// print("In init   \n##########\n##########\n##########\n###########\n\n\n\n");
 
 		is_initialized_str = true;
 		this->rang = rang;
 
-		assert((MIN_RANG <= rang) && (rang <= MAX_RANG));
+		my_assert((MIN_RANG <= rang) && (rang <= MAX_RANG));
 		
 		storage = (char*)mmap(nullptr, 1<<rang, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
@@ -122,7 +138,7 @@ public:
 		set_next(storage, nullptr);
 	}
 
-	char *alloc(int32_t size) {
+	char *alloc(size_t size) {
 		// print("In alloc: ", size, "\n");
 		
 		int power = 1<<MIN_RANG;
@@ -133,12 +149,10 @@ public:
 		}
 		int optimal_level = level;
 		// print(" optimal_level: ", optimal_level, "\n");
-		assert(level <= rang);
+		my_assert(level <= rang);
 		while ((level <= rang) && (levels[level] == nullptr)) {
-			// print(" ", level, "  ", ((ll)levels[level]), "  !!!\n");
 			level++;
 		}
-		// print(" finded level: ", level, "\n");
 		if (level > rang) {
 			print("return nullptr\n");
 			return nullptr;
@@ -146,21 +160,28 @@ public:
 		char* to_alloc = split(levels[level], optimal_level);
 		set_rang(to_alloc, -optimal_level);
 
-		// print(" allocated: ", to_alloc - storage, "\n");
+		// print(" allocated: ", to_alloc - storage, " ", to_alloc - storage + (1<<optimal_level),  "\n");
+		// print_state();
 		// print("----------------------------------\n\n");
 		return to_alloc + SERV_DATA_SIZE;
 	}
 
 	void free(char* ptr) {
+		if (ptr == nullptr) {
+			return;
+		}
+		my_assert(is_valid_ptr(ptr), "not valid ptr in free");
+
 		// print("In free: \n");
 		ptr -= 8;
 		ll block_rang = -get_rang(ptr);
+
+		my_assert(is_valid_rang(block_rang), "incorrect rang");
+		// print(" ", ptr - storage, " ", ptr - storage + (1<<block_rang), "\n");
+
 		while (block_rang < rang) {
 			char* twin = ((ptr - storage) ^ (1<<block_rang)) + storage;
-
-			// print(" ", block_rang, "  twin rang: ", get_rang(twin),  " \n");
-
-			if (get_rang(twin) < 0) {
+			if (get_rang(twin) != block_rang) {
 				break;
 			}
 			cut(twin);
@@ -172,10 +193,36 @@ public:
 		// print("------------------------\n");
 	}
 
+	char *realloc(char *ptr, size_t size) {
+		if (ptr == nullptr) {
+			return alloc(size);
+		}
+		my_assert(is_valid_ptr(ptr), "not valid ptr in realloc");
+		// print("In realloc:\n");
+
+		my_assert(is_valid_rang(-get_rang(ptr - SERV_DATA_SIZE)), "incorrect rang");
+
+		size_t old_size = 1 << -get_rang(ptr - SERV_DATA_SIZE);
+
+		char *res = alloc(size);
+		if (res == nullptr) {
+			return nullptr;
+		}
+		for (int w = std::min(size, old_size) - 1; w >= 0; w--) {
+			res[w] = ptr[w];
+		}
+		free(ptr);
+
+		// print_state();
+		// print("reallocated : ", res - storage, "\n");
+		// print("----------------------\n");
+
+		return res;
+	}
+
 	~cluster() {
 		munmap((void*)storage, 1<<rang);
 	}
 };
 
 #endif // CLUSTER_H
-
