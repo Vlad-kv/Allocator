@@ -29,6 +29,7 @@
 
 /tempdir/*
 /Makefile
+/log.txt
 
 # =========================
 # Operating System Files

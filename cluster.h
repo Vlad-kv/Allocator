@@ -10,9 +10,9 @@
 #include "debug.h"
 
 struct test_struct {
-	int val;
-	test_struct(int val)
-	: val(val) {
+	bool is_initialaised = 0;
+	test_struct() 
+	: is_initialaised(1) {
 	}
 };
 
@@ -30,7 +30,10 @@ private:
 	char *storage;
 	int32_t rang;
 	char* levels[MAX_RANG + 1];
-	
+public:
+	bool constructor_was_called = 0;
+private:
+
 	ll get_rang(char *ptr) {
 		return *(ll*)ptr;
 	}
@@ -112,6 +115,9 @@ private:
 	}
 
 public:
+	cluster() {
+		constructor_was_called = 1;
+	}
 
 	bool is_initialized() {
 		return is_initialized_str;
@@ -119,7 +125,7 @@ public:
 
 	void init(int32_t rang) {
 		my_assert(!is_initialized_str);
-		// print("In init   \n##########\n##########\n##########\n###########\n\n\n\n");
+		print("In init   \n##########\n##########\n##########\n###########\n\n\n\n");
 
 		is_initialized_str = true;
 		this->rang = rang;
@@ -221,7 +227,10 @@ public:
 	}
 
 	~cluster() {
-		munmap((void*)storage, 1<<rang);
+		// print("In destructor\n\n");
+		if (is_initialized_str) {
+			munmap((void*)storage, 1<<rang);
+		}
 	}
 };
 

@@ -5,7 +5,14 @@
 #include <dlfcn.h>
 #include <unistd.h>
 
-#include "debug.h"
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+
+#include <fstream>
+
 using namespace std;
 
 static void* (*malloc_original)(size_t size) = nullptr;
@@ -26,6 +33,8 @@ static_assert(MIN_SIZE_TO_ALLOC <= MAX_SIZE_TO_ALLOC, "MIN_SIZE_TO_ALLOC must be
 size_t get_size() {
 	return MIN_SIZE_TO_ALLOC + rand() % (MAX_SIZE_TO_ALLOC - MIN_SIZE_TO_ALLOC + 1);
 }
+
+
 
 int summ_memory = 0;
 
@@ -66,7 +75,8 @@ void make_malloc(size_t size) {
 	a_my[a_size] = (char*)malloc(size);
 
 	if (a_my[a_size] == nullptr) {
-		fatal_error("nullptr in malloc");
+		cout << "nullptr in malloc";
+		exit(1);
 	}
 	for (int w = 0; w < size; w++) {
 		a_orig[a_size][w] = a_my[a_size][w] = (char)rand();
@@ -87,7 +97,8 @@ void make_calloc(size_t size) {
 	a_my[a_size] = (char*)calloc(size, 1);
 
 	if (a_my[a_size] == nullptr) {
-		fatal_error("nullptr in calloc");
+		cout << "nullptr in calloc";
+		exit(1);
 	}
 	alloc_size[a_size] = size;
 	a_size++;
@@ -116,7 +127,8 @@ void make_realloc() {
 		l_a_my = (char*)realloc(l_a_my, new_size);
 
 		if (l_a_my == nullptr) {
-			fatal_error("nullptr in realloc");
+			cout << "nullptr in realloc";
+			exit(1);
 		}
 		for (int w = old_size; w < new_size; w++) {
 			l_a_orig[w] = l_a_my[w] = (char)rand();
@@ -135,26 +147,29 @@ void big_check() {
 	for (int w = 0; w < a_size; w++) {
 		for (int e = 0; e < alloc_size[w]; e++) {
 			if (a_orig[w][e] != a_my[w][e]) {
-				print((long long)(a_orig[w] + e), " ", (long long)(a_my[w] + e), "\n");
-				fatal_error("big_check failed on ", w, " ", e, " expected ",
-					a_orig[w][e], " found ", a_my[w][e], "     ", alloc_size[w], " \n");
+				cout << (long long)(a_orig[w] + e) << " " << (long long)(a_my[w] + e) << "\n";
+				cout << "big_check failed on " << w << " " << e << " expected " <<
+					a_orig[w][e] << " found " << a_my[w][e] << "     " << alloc_size[w] << " \n";
+				exit(1);
 			}
+			a_orig[w][e] = a_my[w][e] = (char)rand();
 		}
 	}
 }
 
-const int STEP = 100;
+const int STEP = 200;
 
-void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free) {
+void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int num_modifications) {
 	num_reallocs += num_mallocs;
 	num_callocs += num_reallocs;
 	num_free += num_callocs;
+	num_modifications += num_free;
 
-	for (int w = 0; w < 100000; w++) {
+	for (int w = 0; w < 3; w++) {
 		if ((w != 0) && (w % STEP == 0)) {
-			print("Performed ", w, " operations ");
+			cout << "Performed " << w << " operations ";
 			big_check();
-			print("big_check perfomed\n");
+			cout << "big_check perfomed\n";
 		}
 
 		int c = rand() % num_free;
@@ -177,6 +192,13 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free) {
 			}
 			continue;
 		}
+		if (c < num_modifications) {
+			int no = rand() % a_size;
+			int pos = rand() % alloc_size[no];
+
+			a_orig[no][pos] = a_my[no][pos] = (char)rand();
+			continue;
+		}
 	}
 }
 
@@ -186,7 +208,14 @@ int main(int argc, char *argv[]) {
 	calloc_original = (void* (*)(size_t, size_t))dlsym(RTLD_NEXT, "calloc");
 	realloc_original = (void* (*)(void *, size_t))dlsym(RTLD_NEXT, "realloc");
 
-	test(3, 4, 3, 2);
+	test(3, 4, 3, 2, 10);
 
+	system("echo 1");
+
+	/*
+	ofstream out("log.txt", ios_base::app);
+	out << "321\n";
+	out.close();
+	*/
 	return 0;
 }
