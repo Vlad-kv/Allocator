@@ -3,7 +3,6 @@
 
 // #define REMOVE_TEXT
 
-
 #include <mutex>
 #include <cstring>
 #include <fstream>
@@ -22,26 +21,26 @@ void lok_print(std::ofstream &out, const Args &...args) {
 
 template<typename First, typename ...Other>
 void lok_print(std::ofstream &out, const First &first, const Other &...other) {
-	#ifndef REMOVE_TEXT
-		out << first;
-	#endif
+	out << first;
 	lok_print(out, other...);
 }
 
 
 template<typename ...Args>
 void print(const Args &...args) {
-	std::lock_guard<std::recursive_mutex> lg(debug_mutex);
+	#ifndef REMOVE_TEXT
+		std::lock_guard<std::recursive_mutex> lg(debug_mutex);
 
-	num_alive_writers++;
-	std::ofstream out("log.txt", std::ios_base::app);
+		num_alive_writers++;
+		std::ofstream out("log.txt", std::ios_base::app);
 
-	lok_print(out, args...);
+		lok_print(out, args...);
 
-	out.close();
+		out.close();
 
-	buffer_pos = 0;
-	num_alive_writers--;
+		buffer_pos = 0;
+		num_alive_writers--;
+	#endif
 }
 
 template<typename ...Args>

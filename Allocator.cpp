@@ -13,12 +13,18 @@
 
 #define WRITE(str) write(1, str, strlen(str));
 
-const int FIRST_RANG = 27;
-cluster first;
-
-test_struct test;
+const int FIRST_RANG = 25;
+cluster *first;
 
 std::recursive_mutex test_mutex;
+
+bool is_initialized = 0;
+
+void initialize() {
+	my_assert(!is_initialized, "invalid initialisation");
+	is_initialized = 1;
+	first = create_cluster(FIRST_RANG);
+}
 
 #ifdef ORIGINAL
 	void* (*malloc_original)(size_t size) = nullptr;
@@ -48,8 +54,17 @@ extern "C" void *malloc(size_t size) {
 		return res;
 	}
 
-	if (test.is_initialaised == 0) {
-		print(" ### ");
+	if (size == (size_t)-1) {               // debug
+		return dlsym(RTLD_NEXT, "malloc");
+	}
+	if (size == (size_t)-2) {
+		return dlsym(RTLD_NEXT, "free");
+	}
+	if (size == (size_t)-3) {
+		return dlsym(RTLD_NEXT, "calloc");
+	}
+	if (size == (size_t)-4) {
+		return dlsym(RTLD_NEXT, "realloc");
 	}
 
 	print("malloc catched: ", size, "\n");
@@ -65,10 +80,16 @@ extern "C" void *malloc(size_t size) {
 	    }
 	    return malloc_original(size);
 	#else
-	    if (!first.is_initialized()) {
-			first.init(FIRST_RANG);
+	    if (!is_initialized) {
+			initialize();
 		}
-		return first.alloc(size);
+		if (size == 0) {
+			return nullptr;
+		}
+		char *res = first->alloc(size);
+		print("    after malloc\n");
+
+		return res;
 	#endif
 }
 
@@ -94,8 +115,11 @@ extern "C" void free(void *ptr) {
 	    	free_original(ptr);
 	    }
 	#else
-
-	    first.free((char*)ptr);
+	    if (!is_initialized) {
+			initialize();
+		}
+	    first->free((char*)ptr);
+	    print("    after free\n");
     #endif
 }
 
@@ -131,17 +155,27 @@ extern "C" void *calloc(size_t nmemb, size_t size) {
 	    return calloc_original(nmemb, size);
 		// return nullptr;
 	#else
-	    if (!first.is_initialized()) {
-			first.init(FIRST_RANG);
+	    if (!is_initialized) {
+			initialize();
+		}
+		if ((nmemb == 0) || (size == 0)) {
+			return nullptr;
+		}
+		if ((nmemb > (1<<FIRST_RANG)) || 
+			(size > (1<<FIRST_RANG)) || 
+			(nmemb * size > (1<<FIRST_RANG))
+			) {
+			return nullptr;
 		}
 
-		char* res = first.alloc(nmemb * size);
+		char* res = first->alloc(nmemb * size);
 	    if (res == nullptr) {
 	    	return nullptr;
 	    }
 	    for (size_t w = 0; w < nmemb * size; w++) {
 	    	res[w] = 0;
 	    }
+	    print("    after calloc\n");
 	    return res;
     #endif
 }
@@ -162,27 +196,25 @@ extern "C" void *realloc(void *ptr, size_t size) {
 	    }
 	    return realloc_original(ptr, size);
 	#else
-	    if (!first.is_initialized()) {
-			first.init(FIRST_RANG);
+	    if (!is_initialized) {
+			initialize();
 		}
 
 		if (size == 0) {
-	    	first.free((char*)ptr);
+	    	first->free((char*)ptr);
 	    	return nullptr;
 	    }
 	    if (ptr == nullptr) {
-	    	return first.alloc(size);
+	    	return first->alloc(size);
 	    }
-	    return first.realloc((char*)ptr, size);
+	    char *res = first->realloc((char*)ptr, size);
+	    print("    after realloc\n");
+	    return res;
     #endif
 }
 
 extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 	std::lock_guard<std::recursive_mutex> lg(test_mutex);
-
-	if (test.is_initialaised == 0) {
-		print(" ### ");
-	}
 
 	print("posix_memalign catched\n");
 
@@ -196,8 +228,8 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 	    }
 	    return posix_memalign(memptr, alignment, size);
 	#else
-	    if (!first.is_initialized()) {
-			first.init(FIRST_RANG);
+	    if (!is_initialized) {
+			initialize();
 		}
 		fatal_error("Not implemented.");
     #endif

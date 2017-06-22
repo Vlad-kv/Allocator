@@ -25,8 +25,8 @@ const int MAX_SUMM_MEMORY = 1000000;
 const int MAX_SIZE = 2000;
 const int NUM_TO_FREE_IN_BIG_FREE = 100;
 
-const int MIN_SIZE_TO_ALLOC = 32;
-const int MAX_SIZE_TO_ALLOC = 2000;
+const int MIN_SIZE_TO_ALLOC = 64;
+const int MAX_SIZE_TO_ALLOC = 1000;
 
 static_assert(MIN_SIZE_TO_ALLOC <= MAX_SIZE_TO_ALLOC, "MIN_SIZE_TO_ALLOC must be <= MAX_SIZE_TO_ALLOC");
 
@@ -149,7 +149,7 @@ void big_check() {
 			if (a_orig[w][e] != a_my[w][e]) {
 				cout << (long long)(a_orig[w] + e) << " " << (long long)(a_my[w] + e) << "\n";
 				cout << "big_check failed on " << w << " " << e << " expected " <<
-					a_orig[w][e] << " found " << a_my[w][e] << "     " << alloc_size[w] << " \n";
+					(int)a_orig[w][e] << " found " << (int)a_my[w][e] << "     " << alloc_size[w] << " \n";
 				exit(1);
 			}
 			a_orig[w][e] = a_my[w][e] = (char)rand();
@@ -157,7 +157,7 @@ void big_check() {
 	}
 }
 
-const int STEP = 200;
+const int STEP = 500;
 
 void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int num_modifications) {
 	num_reallocs += num_mallocs;
@@ -165,7 +165,7 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int 
 	num_free += num_callocs;
 	num_modifications += num_free;
 
-	for (int w = 0; w < 3; w++) {
+	for (int w = 0; w < 100000; w++) {
 		if ((w != 0) && (w % STEP == 0)) {
 			cout << "Performed " << w << " operations ";
 			big_check();
@@ -203,14 +203,16 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int 
 }
 
 int main(int argc, char *argv[]) {
-	malloc_original = (void* (*)(size_t size))dlsym(RTLD_NEXT, "malloc");
-	free_original = (void (*)(void *ptr))dlsym(RTLD_NEXT, "free");
-	calloc_original = (void* (*)(size_t, size_t))dlsym(RTLD_NEXT, "calloc");
-	realloc_original = (void* (*)(void *, size_t))dlsym(RTLD_NEXT, "realloc");
+	malloc_original = (void* (*)(size_t size))malloc(-1);
+	free_original = (void (*)(void *ptr))malloc(-2);
+	calloc_original = (void* (*)(size_t, size_t))malloc(-3);
+	realloc_original = (void* (*)(void *, size_t))malloc(-4);
 
-	test(3, 4, 3, 2, 10);
+	// srand(4);
 
-	system("echo 1");
+	test(30, 40, 30, 30, 0);
+
+	// system("echo 1");
 
 	/*
 	ofstream out("log.txt", ios_base::app);
