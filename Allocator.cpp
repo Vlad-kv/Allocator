@@ -5,25 +5,43 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <mutex>
+#include <atomic>
 
-#include "cluster.h"
 #include "debug.h"
+
+#include "work_with_big_blocks.h"
+#include "work_with_clusters.h"
+#include "work_with_slabs.h"
 
 // #define ORIGINAL
 
 #define WRITE(str) write(1, str, strlen(str));
 
-const int FIRST_RANG = 25;
-cluster *first;
+typedef unsigned long long ull;
+
+storadge_of_clusters first_stor;
 
 std::recursive_mutex test_mutex;
 
-bool is_initialized = 0;
+std::atomic_bool is_initialized;
+std::mutex init_mutex;
 
 void initialize() {
-	my_assert(!is_initialized, "invalid initialisation");
-	is_initialized = 1;
-	first = create_cluster(FIRST_RANG);
+	first_stor.init();
+	first_stor.add_cluster(create_cluster());
+}
+
+void check_init() {
+	if (is_initialized.load() == true) {
+		return;
+	}
+	std::lock_guard<std::mutex> lg(init_mutex);
+
+	if (is_initialized.load() == true) {
+		return;
+	}
+	is_initialized = true;
+	initialize();
 }
 
 #ifdef ORIGINAL
@@ -44,7 +62,6 @@ extern "C" void *malloc(size_t size) {
 
 	if (num_alive_writers > 0) {
 		// WRITE("  malloc for print\n");
-		
 		char* res = buffer_for_print + buffer_pos;
 		buffer_pos += size;
 		if (buffer_pos > BUFFER_FOR_PRINT_SIZE) {
@@ -69,7 +86,6 @@ extern "C" void *malloc(size_t size) {
 
 	print("malloc catched: ", size, "\n");
 
-	// TODO
 	#ifdef ORIGINAL
 	    if (malloc_original == nullptr) {
 	        malloc_original = (void* (*)(size_t size))dlsym(RTLD_NEXT, "malloc");
@@ -80,16 +96,19 @@ extern "C" void *malloc(size_t size) {
 	    }
 	    return malloc_original(size);
 	#else
-	    if (!is_initialized) {
-			initialize();
-		}
-		if (size == 0) {
+	    check_init();
+
+		if ((size == 0) || (size > MAX_SIZE_TO_ALLOC)) {
 			return nullptr;
 		}
-		char *res = first->alloc(size);
-		print("    after malloc\n");
 
-		return res;
+		if (size <= MAX_SIZE_TO_ALLOC_IN_SLAB) {
+			return alloc_block_in_slab(size);
+		}
+		if (size <= MAX_SIZE_TO_ALLOC_IN_CLUSTERS) {
+			return alloc_block_in_cluster(size);
+		}
+		return alloc_big_block(size);
 	#endif
 }
 
@@ -101,8 +120,8 @@ extern "C" void free(void *ptr) {
 		return;
 	}
 
-	print("free catched : ", (long long)ptr, "\n");
-	// TODO
+	print("free catched \n");
+	
 	#ifdef ORIGINAL
 	    if (free_original == nullptr) {
 	        free_original = (void (*)(void *ptr))dlsym(RTLD_NEXT, "free");
@@ -115,21 +134,29 @@ extern "C" void free(void *ptr) {
 	    	free_original(ptr);
 	    }
 	#else
-	    if (!is_initialized) {
-			initialize();
-		}
-	    first->free((char*)ptr);
+	    check_init();
+	    
+	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % cluster::PAGE_SIZE;
+	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
+
+	    if (num_pages < 0) {
+	    	free_block_in_clster((char*)ptr);
+	    }
+	    if (num_pages == 0) {
+	    	free_big_block((char*)ptr);
+	    }
+	    if (num_pages > 0) {
+	    	free_block_in_slab((char*)ptr);
+	    }
 	    print("    after free\n");
     #endif
 }
-
 
 extern "C" void *calloc(size_t nmemb, size_t size) {
 	std::lock_guard<std::recursive_mutex> lg(test_mutex);
 
 	print("calloc catched : ", nmemb, " ", size, "\n");
 
-	// TODO
 	#ifdef ORIGINAL
 	    if (calloc_original == nullptr) {
 	    	if (!going_to_init_original_calloc) {     // всё из-за того, что dlsym сам вызывает calloc
@@ -153,25 +180,23 @@ extern "C" void *calloc(size_t nmemb, size_t size) {
 	        }
 	    }
 	    return calloc_original(nmemb, size);
-		// return nullptr;
 	#else
-	    if (!is_initialized) {
-			initialize();
-		}
-		if ((nmemb == 0) || (size == 0)) {
+	    check_init();
+	    
+		if ((nmemb == 0) || (size == 0) || (nmemb * size > MAX_SIZE_TO_ALLOC)) {
 			return nullptr;
 		}
-		if ((nmemb > (1<<FIRST_RANG)) || 
-			(size > (1<<FIRST_RANG)) || 
-			(nmemb * size > (1<<FIRST_RANG))
-			) {
+		if ((nmemb * size) / size != nmemb) {
 			return nullptr;
 		}
 
-		char* res = first->alloc(nmemb * size);
+		char* res = (char*)malloc(nmemb * size);
 	    if (res == nullptr) {
 	    	return nullptr;
 	    }
+
+	    // TODO заменить на memset или понаставить if-ов
+
 	    for (size_t w = 0; w < nmemb * size; w++) {
 	    	res[w] = 0;
 	    }
@@ -185,7 +210,6 @@ extern "C" void *realloc(void *ptr, size_t size) {
 
 	print("realloc catched\n");
 
-	// TODO
 	#ifdef ORIGINAL
 	    if (realloc_original == nullptr) {
 	        realloc_original = (void* (*)(void *, size_t))dlsym(RTLD_NEXT, "realloc");
@@ -196,20 +220,28 @@ extern "C" void *realloc(void *ptr, size_t size) {
 	    }
 	    return realloc_original(ptr, size);
 	#else
-	    if (!is_initialized) {
-			initialize();
-		}
+	    check_init();
 
 		if (size == 0) {
-	    	first->free((char*)ptr);
+	    	free(ptr);
 	    	return nullptr;
 	    }
 	    if (ptr == nullptr) {
-	    	return first->alloc(size);
+	    	return malloc(size);
 	    }
-	    char *res = first->realloc((char*)ptr, size);
-	    print("    after realloc\n");
-	    return res;
+
+	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % cluster::PAGE_SIZE;
+	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
+
+	    if (num_pages < 0) {
+	    	return realloc_block_in_cluster((char*)ptr, size);
+	    }
+	    if (num_pages == 0) {
+	    	return realloc_big_block((char*)ptr, size);
+	    }
+	    if (num_pages > 0) {
+	    	return realloc_block_in_slab((char*)ptr, size);
+	    }
     #endif
 }
 
@@ -228,9 +260,8 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 	    }
 	    return posix_memalign(memptr, alignment, size);
 	#else
-	    if (!is_initialized) {
-			initialize();
-		}
+	    check_init();
+	    // TODO сделать
 		fatal_error("Not implemented.");
     #endif
 }

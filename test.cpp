@@ -5,7 +5,6 @@
 #include <dlfcn.h>
 #include <unistd.h>
 
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -20,21 +19,18 @@ static void (*free_original)(void *ptr) = nullptr;
 static void* (*calloc_original)(size_t nmemb, size_t size) = nullptr;
 static void* (*realloc_original)(void *ptr, size_t size) = nullptr;
 
-
-const int MAX_SUMM_MEMORY = 1000000;
+const int MAX_SUMM_MEMORY = 8000000;
 const int MAX_SIZE = 2000;
 const int NUM_TO_FREE_IN_BIG_FREE = 100;
 
 const int MIN_SIZE_TO_ALLOC = 64;
-const int MAX_SIZE_TO_ALLOC = 1000;
+const int MAX_SIZE_TO_ALLOC = 8000;
 
 static_assert(MIN_SIZE_TO_ALLOC <= MAX_SIZE_TO_ALLOC, "MIN_SIZE_TO_ALLOC must be <= MAX_SIZE_TO_ALLOC");
 
 size_t get_size() {
 	return MIN_SIZE_TO_ALLOC + rand() % (MAX_SIZE_TO_ALLOC - MIN_SIZE_TO_ALLOC + 1);
 }
-
-
 
 int summ_memory = 0;
 
@@ -157,7 +153,7 @@ void big_check() {
 	}
 }
 
-const int STEP = 500;
+const int STEP = 1000;
 
 void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int num_modifications) {
 	num_reallocs += num_mallocs;
@@ -210,7 +206,7 @@ int main(int argc, char *argv[]) {
 
 	// srand(4);
 
-	test(30, 40, 30, 30, 0);
+	test(30, 40, 30, 3, 0);
 
 	// system("echo 1");
 
