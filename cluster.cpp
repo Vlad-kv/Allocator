@@ -105,7 +105,7 @@ char *cluster::alloc(size_t optimal_level) {
 	// print(" allocated: ", to_alloc - storage, " ", to_alloc - storage + (1<<optimal_level),  "\n");
 	// print_state();
 	// print("----------------------------------\n\n");
-	print("                        ", available_memory, "\n");
+	// print("                        ", available_memory, "\n");
 	return to_alloc;
 }
 
@@ -138,8 +138,9 @@ void cluster::free(char* ptr) {
 
 	update_max_available_rang();
 
+	// print_state();
 	// print("------------------------\n");
-	print("                        ", available_memory, "\n");
+	// print("                        ", available_memory, "\n");
 }
 
 char *cluster::try_to_realloc(char *ptr, size_t new_rang_of_block) {
@@ -149,7 +150,7 @@ char *cluster::try_to_realloc(char *ptr, size_t new_rang_of_block) {
 
 
 cluster *create_cluster() {
-	char *res = (char*)mmap(nullptr, 1<<RANG_OF_CLUSTERS, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	char *res = (char*)mmap(nullptr, 1<<RANG_OF_CLUSTERS, PROT_READ | PROT_WRITE, /*MAP_SHARED*/ MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (res == MAP_FAILED) {
 		fatal_error("mmap failed\n");
 	}

@@ -135,9 +135,16 @@ extern "C" void free(void *ptr) {
 	    }
 	#else
 	    check_init();
-	    
+
+	    if (ptr == nullptr) {
+	    	return;
+	    }
+
+	    print("    after check_init\n");
 	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % cluster::PAGE_SIZE;
 	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
+
+	    print("    after get_num_of_pages_to_begin\n");
 
 	    if (num_pages < 0) {
 	    	free_block_in_clster((char*)ptr);

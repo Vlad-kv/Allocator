@@ -6,6 +6,7 @@
 #include "storadge_of_clusters.h"
 #include "constants.h"
 #include <mutex>
+#include <cstring>
 
 typedef unsigned long long ull;
 
@@ -59,13 +60,15 @@ void free_block_in_clster(char *ptr) {
 
     // TODO что-нибудь с пустым cluster-ом
 
+    if (c->)
+
     c->cluster_mutex.unlock();
 }
 
 char *realloc_block_in_cluster(char *ptr, size_t new_size) {
-	size_t old_size = (1<<cluster::get_rang(ptr)) - cluster::SERV_DATA_SIZE;
+	size_t old_size = (1<<-cluster::get_rang(ptr)) - cluster::SERV_DATA_SIZE;
 	cluster *c = get_begin_of_cluster(ptr);
-	// TODO копировать с помощью memcpy
+
 	std::unique_lock<std::recursive_mutex> u_lock(c->cluster_mutex);
 
 	if (new_size <= MAX_SIZE_TO_ALLOC_IN_SLAB) {
@@ -73,9 +76,7 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 		if (res == nullptr) {
 			return nullptr;
 		}
-		for (int w = std::min(new_size, old_size) - 1; w >= 0; w--) {
-			res[w] = ptr[w];
-		}
+		std::memcpy(res, ptr, std::min(new_size, old_size));
 		c->free(ptr);
 		return res;
 	}
@@ -85,9 +86,7 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 		if (res == nullptr) {
 			return nullptr;
 		}
-		for (int w = std::min(new_size, old_size) - 1; w >= 0; w--) {
-			res[w] = ptr[w];
-		}
+		std::memcpy(res, ptr, std::min(new_size, old_size));
 		c->free(ptr);
 		return res;
 	}
@@ -104,10 +103,8 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 		u_lock.release();
 		return nullptr;
 	}
-
-	for (int w = std::min(new_size, old_size) - 1; w >= 0; w--) {
-		res[w] = ptr[w];
-	}
+	
+	std::memcpy(res, ptr, std::min(new_size, old_size));
 	u_lock.lock();
 
 	c->free(ptr);

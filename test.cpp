@@ -19,12 +19,12 @@ static void (*free_original)(void *ptr) = nullptr;
 static void* (*calloc_original)(size_t nmemb, size_t size) = nullptr;
 static void* (*realloc_original)(void *ptr, size_t size) = nullptr;
 
-const int MAX_SUMM_MEMORY = 8000000;
-const int MAX_SIZE = 2000;
-const int NUM_TO_FREE_IN_BIG_FREE = 100;
+const int MAX_SUMM_MEMORY = 2000000;
+const int MAX_SIZE = 4000;
+const int NUM_TO_FREE_IN_BIG_FREE = 200;
 
 const int MIN_SIZE_TO_ALLOC = 64;
-const int MAX_SIZE_TO_ALLOC = 8000;
+const int MAX_SIZE_TO_ALLOC = 4000;
 
 static_assert(MIN_SIZE_TO_ALLOC <= MAX_SIZE_TO_ALLOC, "MIN_SIZE_TO_ALLOC must be <= MAX_SIZE_TO_ALLOC");
 
@@ -153,7 +153,7 @@ void big_check() {
 	}
 }
 
-const int STEP = 1000;
+const int STEP = 500;
 
 void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int num_modifications) {
 	num_reallocs += num_mallocs;
@@ -196,6 +196,9 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int 
 			continue;
 		}
 	}
+	while (a_size > 0) {
+		big_free();
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -204,9 +207,9 @@ int main(int argc, char *argv[]) {
 	calloc_original = (void* (*)(size_t, size_t))malloc(-3);
 	realloc_original = (void* (*)(void *, size_t))malloc(-4);
 
-	// srand(4);
+	srand(4);
 
-	test(30, 40, 30, 3, 0);
+	test(30, 40, 30, 30, 20);
 
 	// system("echo 1");
 

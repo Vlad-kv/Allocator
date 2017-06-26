@@ -2,7 +2,7 @@
 #define CONSTANTS_H
 
 namespace {
-	const int RANG_OF_CLUSTERS = 22;
+	const int RANG_OF_CLUSTERS = 23;
 
 	const int CLUSTER_MAX_RANG = 19;
 	const int CLUSTER_MIN_RANG = 6;
