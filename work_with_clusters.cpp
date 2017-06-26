@@ -60,8 +60,6 @@ void free_block_in_clster(char *ptr) {
 
     // TODO что-нибудь с пустым cluster-ом
 
-    if (c->)
-
     c->cluster_mutex.unlock();
 }
 
