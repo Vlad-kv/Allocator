@@ -20,7 +20,6 @@ public:
 	static const int32_t MIN_RANG = CLUSTER_MIN_RANG;
 	static const int32_t SHIFT = 16;
 	static const int32_t SERV_DATA_SIZE = CLUSTER_SERV_DATA_SIZE;
-	static const int32_t PAGE_SIZE = 4096;
 	static const int32_t RESERVED_RANG = 12;
 private:
 	typedef long long ll;
@@ -36,6 +35,9 @@ public:
 	int old_max_available_rang; // cluster в его storadge_of_clusters
 
 	storadge_of_clusters *this_storadge_of_clusters;
+
+	char* position_of_mapping;
+	size_t size_of_mapping;
 
 	static int32_t get_rang(char *ptr);
 	void set_rang(char *ptr, int32_t val);
@@ -83,7 +85,7 @@ private:
 	void add_to_begin(int level, char* block);
 	char* split(char* block, ll neded_level);
 
-	cluster();
+	cluster(char* position_of_mapping, size_t size_of_mapping);
 public:
 
 	char *alloc(size_t size);
@@ -93,7 +95,7 @@ public:
 	friend cluster* create_cluster();
 };
 
-static_assert(cluster::PAGE_SIZE == (1<<cluster::RESERVED_RANG), "invalid RESERVED_RANG");
+static_assert(PAGE_SIZE == (1<<cluster::RESERVED_RANG), "invalid RESERVED_RANG");
 static_assert((1<<cluster::RESERVED_RANG) - cluster::SERV_DATA_SIZE >= sizeof(cluster), "too small RESERVED_RANG");
 static_assert(cluster::RESERVED_RANG < cluster::MAX_RANG, "too big reserved rang");
 

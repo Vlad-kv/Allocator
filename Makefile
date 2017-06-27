@@ -28,7 +28,7 @@ test.exe: test.cpp debug.h
 #work_with_clusters.cpp storadge_of_clusters.cpp debug.cpp cluster.cpp Allocator.cpp work_with_slabs.cpp work_with_big_blocks.cpp
 
 libAllocator.so: work_with_slabs.h work_with_clusters.h work_with_clusters.cpp work_with_big_blocks.h storadge_of_clusters.h storadge_of_clusters.cpp debug.h debug.cpp constants.h cluster.h cluster.cpp Allocator.cpp work_with_slabs.cpp work_with_big_blocks.cpp
-	g++ -shared -o libAllocator.so work_with_clusters.cpp storadge_of_clusters.cpp debug.cpp cluster.cpp Allocator.cpp work_with_slabs.cpp work_with_big_blocks.cpp -fPIC -ldl -std=c++11 -O2
+	g++ -shared -o libAllocator.so work_with_clusters.cpp storadge_of_clusters.cpp debug.cpp cluster.cpp Allocator.cpp work_with_slabs.cpp work_with_big_blocks.cpp -fPIC -ldl -std=c++11 -O2 -lpthread
 
 
 clean:

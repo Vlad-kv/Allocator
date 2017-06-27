@@ -23,8 +23,8 @@ const int MAX_SUMM_MEMORY = 2000000;
 const int MAX_SIZE = 4000;
 const int NUM_TO_FREE_IN_BIG_FREE = 200;
 
-const int MIN_SIZE_TO_ALLOC = 64;
-const int MAX_SIZE_TO_ALLOC = 4000;
+const int MIN_SIZE_TO_ALLOC = 1;
+const int MAX_SIZE_TO_ALLOC = 1000000;
 
 static_assert(MIN_SIZE_TO_ALLOC <= MAX_SIZE_TO_ALLOC, "MIN_SIZE_TO_ALLOC must be <= MAX_SIZE_TO_ALLOC");
 
@@ -153,7 +153,7 @@ void big_check() {
 	}
 }
 
-const int STEP = 500;
+const int STEP = 1;
 
 void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int num_modifications) {
 	num_reallocs += num_mallocs;
@@ -207,9 +207,9 @@ int main(int argc, char *argv[]) {
 	calloc_original = (void* (*)(size_t, size_t))malloc(-3);
 	realloc_original = (void* (*)(void *, size_t))malloc(-4);
 
-	srand(4);
+	srand(5);
 
-	test(30, 40, 30, 30, 20);
+	test(30, 40, 30, 10, 0);
 
 	// system("echo 1");
 

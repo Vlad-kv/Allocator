@@ -29,6 +29,8 @@ std::mutex init_mutex;
 void initialize() {
 	first_stor.init();
 	first_stor.add_cluster(create_cluster());
+
+	init_slab_allocation();
 }
 
 void check_init() {
@@ -141,7 +143,7 @@ extern "C" void free(void *ptr) {
 	    }
 
 	    print("    after check_init\n");
-	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % cluster::PAGE_SIZE;
+	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % PAGE_SIZE;
 	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
 	    print("    after get_num_of_pages_to_begin\n");
@@ -237,7 +239,7 @@ extern "C" void *realloc(void *ptr, size_t size) {
 	    	return malloc(size);
 	    }
 
-	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % cluster::PAGE_SIZE;
+	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % PAGE_SIZE;
 	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
 	    if (num_pages < 0) {
