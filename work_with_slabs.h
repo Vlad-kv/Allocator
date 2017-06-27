@@ -3,6 +3,7 @@
 
 #include <mutex>
 #include <cstring>
+#include <cstdlib>
 #include "debug.h"
 #include <pthread.h>
 #include <sys/mman.h>

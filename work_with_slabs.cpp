@@ -144,7 +144,7 @@ namespace myslab {
         slab_info * get_extra_slab(slab_data * assigner_data) {
             // TODO try to retrieve slab from global
             slab_info * res = create_slab<elem_size>(
-                    std::max(100, total_capacity / 10));
+                    std::max(200, total_capacity / 10));
             res->assigned_store = assigner_data;
             return res;
         }
@@ -267,7 +267,7 @@ namespace myslab {
     pthread_key_t key;
 
     void * get_memory(int pages) {
-        void * mmap_res = mmap(NULL, PAGE_SIZE * pages, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE, 0, -1);
+        void * mmap_res = mmap(nullptr, PAGE_SIZE * pages, PROT_READ | PROT_WRITE, /*MAP_SHARED*/ MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if(mmap_res == MAP_FAILED){
             fatal_error("mmap failed\n");
         }
@@ -409,7 +409,7 @@ char *realloc_block_in_slab(char *ptr, size_t new_size) {
     if (info->elem_size >= new_size) {
         return ptr;
     } else {
-        char * new_ptr = alloc_block_in_slab(new_size);
+        char * new_ptr = (char *)malloc(new_size);
         memcpy(new_ptr, ptr, info->elem_size);
         free_block_in_slab(ptr, info);
         return new_ptr;
