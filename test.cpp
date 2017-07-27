@@ -23,8 +23,8 @@ const int MAX_SUMM_MEMORY = 2000000;
 const int MAX_SIZE = 4000;
 const int NUM_TO_FREE_IN_BIG_FREE = 200;
 
-const int MIN_SIZE_TO_ALLOC = 1;
-const int MAX_SIZE_TO_ALLOC = 1000000;
+const int MIN_SIZE_TO_ALLOC = 40;
+const int MAX_SIZE_TO_ALLOC = 100000;
 
 static_assert(MIN_SIZE_TO_ALLOC <= MAX_SIZE_TO_ALLOC, "MIN_SIZE_TO_ALLOC must be <= MAX_SIZE_TO_ALLOC");
 
@@ -153,7 +153,7 @@ void big_check() {
 	}
 }
 
-const int STEP = 1;
+const int STEP = 10;
 
 void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int num_modifications) {
 	num_reallocs += num_mallocs;
@@ -209,14 +209,6 @@ int main(int argc, char *argv[]) {
 
 	srand(5);
 
-	test(30, 40, 30, 10, 0);
-
-	// system("echo 1");
-
-	/*
-	ofstream out("log.txt", ios_base::app);
-	out << "321\n";
-	out.close();
-	*/
+	test(30, 40, 30, 10, 20);
 	return 0;
 }

@@ -3,12 +3,13 @@
 #include "work_with_slabs.h"
 
 #include <sys/mman.h>
+#include <errno.h>
 
 #include "constants.h"
 #include "debug.h"
 
 char *alloc_big_block(size_t size) {
-	size = size + (size % PAGE_SIZE) + PAGE_SIZE;
+	size = size + (PAGE_SIZE - size % PAGE_SIZE) % PAGE_SIZE + PAGE_SIZE;
 
 	char *block = (char*)mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
@@ -28,7 +29,8 @@ void free_big_block(char *ptr) {
 	char *block = *(char**)(ptr - 3 * sizeof(char*));
 	size_t size = *(size_t*)(ptr - 2 * sizeof(char*));
 	int error = munmap(block, size);
-	my_assert(error == 0, "error in munmup in free_big_block");
+
+	my_assert(error == 0, "error in munmup in free_big_block: ", errno);
 }
 
 char *realloc_big_block(char *ptr, size_t new_size) {
@@ -44,6 +46,7 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 		}
 		std::memcpy(res, ptr, std::min(new_size, old_size));
 		int error = munmap(block, size);
+
 		my_assert(error == 0, "error in munmup in free_big_block");
 		return res;
 	}

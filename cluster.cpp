@@ -3,23 +3,23 @@
 typedef unsigned long long ull;
 
 int32_t cluster::get_rang(char *ptr) {
-	return *(int32_t*)(ptr - sizeof(void*));
+	return *(int32_t*)ptr;
 }
 void cluster::set_rang(char *ptr, int32_t val) {
-	*(int32_t*)(ptr - sizeof(void*)) = val;
-	*(int32_t*)(ptr - sizeof(int32_t)) = -(ptr - storage) / PAGE_SIZE;
+	*(int32_t*)ptr = val;
+	*(int32_t*)(ptr + sizeof(int32_t)) = -(ptr - storage) / PAGE_SIZE - 1;
 }
 char* cluster::get_prev(char *ptr) {
-	return *(char**)ptr;
-}
-void cluster::set_prev(char *ptr, char* val) {
-	*(char**)ptr = val;
-}
-char* cluster::get_next(char *ptr) {
 	return *(char**)(ptr + sizeof(void*));
 }
-char* cluster::set_next(char *ptr, char* val) {
+void cluster::set_prev(char *ptr, char* val) {
 	*(char**)(ptr + sizeof(void*)) = val;
+}
+char* cluster::get_next(char *ptr) {
+	return *(char**)(ptr + 2 * sizeof(void*));
+}
+char* cluster::set_next(char *ptr, char* val) {
+	*(char**)(ptr + 2 * sizeof(void*)) = val;
 }
 
 void cluster::cut(char* block) {
@@ -62,13 +62,9 @@ char* cluster::split(char* block, ll neded_level) {
 	return block;
 }
 
-cluster::cluster(char* position_of_mapping, size_t size_of_mapping)
-: position_of_mapping(position_of_mapping), size_of_mapping(size_of_mapping) {
+cluster::cluster() 
+: storage((char*)this) {
 	print(" In constructor \n        ##########\n        ##########\n        ##########\n\n");
-
-	storage = (char*)this;
-
-	my_assert((unsigned long long)storage % (1<<CLUSTER_MAX_RANG) == 0, "cluster must be aligned as CLUSTER_MAX_RANG");
 
 	max_available_rang = MAX_RANG;
 
@@ -85,6 +81,7 @@ cluster::cluster(char* position_of_mapping, size_t size_of_mapping)
 		set_rang(twin, w);
 		add_to_begin(w, twin);
 	}
+	set_rang(storage, -RESERVED_RANG);
 }
 
 char *cluster::alloc(size_t optimal_level) {
@@ -102,7 +99,9 @@ char *cluster::alloc(size_t optimal_level) {
 		print(" return nullptr in alloc\n");
 		return nullptr;
 	}
+
 	available_memory -= 1<<optimal_level;
+	
 	char* to_alloc = split(levels[level], optimal_level);
 	set_rang(to_alloc, -optimal_level);
 
@@ -112,13 +111,16 @@ char *cluster::alloc(size_t optimal_level) {
 	// print_state();
 	// print("----------------------------------\n\n");
 	// print("                        ", available_memory, "\n");
-	return to_alloc;
+	return to_alloc + SERV_DATA_SIZE;
 }
 
 void cluster::free(char* ptr) {
 	if (ptr == nullptr) {
 		return;
 	}
+
+	ptr -= SERV_DATA_SIZE;
+
 	my_assert(is_valid_ptr(ptr), "not valid ptr in free");
 
 	// print("In free: \n");
@@ -156,36 +158,18 @@ char *cluster::try_to_realloc(char *ptr, size_t new_rang_of_block) {
 
 
 cluster *create_cluster() {
-	char *res = (char*)MAP_FAILED;
-	for (int w = 0; w < NUMBER_OF_ATTEMPTS_TO_GET_RANDOM_ALIGNED_CLUSTER; w++) {
-		ull r = ((rand() * (ull)PAGE_SIZE) >> CLUSTER_MAX_RANG) << CLUSTER_MAX_RANG;
-		print("   ", r, "\n");
-		res = (char*)mmap((void*)r, 1<<RANG_OF_CLUSTERS, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-		if (res != MAP_FAILED) {
-			break;
-		}
+	char *res = (char*)mmap(nullptr, 1<<RANG_OF_CLUSTERS, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+	if (res == MAP_FAILED) {
+		return nullptr;
 	}
 
-	if (res != MAP_FAILED) {
-		print("win!!!\n");
-
-		new(res)cluster(res, 1<<RANG_OF_CLUSTERS);
-		return (cluster*)res;
-	}
-
-	char* ptr = (char*)mmap(nullptr, (1<<RANG_OF_CLUSTERS) + (1<<CLUSTER_MAX_RANG), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	if (ptr == MAP_FAILED) {
-		fatal_error("mmap failed\n");
-	}
-
-	res = ptr + ((1<<CLUSTER_MAX_RANG) - (ull)ptr % (1<<CLUSTER_MAX_RANG));
-
-	new(res)cluster(ptr, (1<<RANG_OF_CLUSTERS) + (1<<CLUSTER_MAX_RANG));
+	new(res)cluster();
 	return (cluster*)res;
 }
 
 int32_t get_num_of_pages_to_begin(char *ptr) {
-	return *(int32_t*)(ptr - sizeof(int32_t));
+	return *(int32_t*)(ptr + sizeof(int32_t));
 }
 
 int calculate_optimal_rang(size_t size) {

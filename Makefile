@@ -15,7 +15,7 @@ execute: libAllocator.so test.exe
 	rm -f log.txt
 	LD_PRELOAD=./libAllocator.so ./test.exe
 
-test.exe: test.cpp debug.h
+test.exe: test.cpp
 	g++ -o test.exe test.cpp -std=c++11 -ldl
 
 

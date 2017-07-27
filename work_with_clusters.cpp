@@ -21,7 +21,9 @@ char *add_pseudo_free_cluster_and_get_block(storadge_of_clusters *storadge, int 
 	print("In add_pseudo_free_cluster_and_get_block\n");
 
 	cluster *new_cluster = get_pseudo_free_cluster(rang);
-
+	if (new_cluster == nullptr) {
+		return nullptr;
+	}
 	std::lock_guard<std::recursive_mutex> lg(new_cluster->cluster_mutex);
 
 	char *res = new_cluster->alloc(rang);
@@ -32,7 +34,7 @@ char *add_pseudo_free_cluster_and_get_block(storadge_of_clusters *storadge, int 
 
 cluster *get_begin_of_cluster(char *ptr) {
 	char* aligned_ptr = (char*)(ptr - ((ull)ptr) % PAGE_SIZE);
-	int num_pages = get_num_of_pages_to_begin(aligned_ptr);
+	int num_pages = get_num_of_pages_to_begin(aligned_ptr) + 1;
 
 	my_assert(num_pages < 0, "invalid num_pages");
 	return (cluster*)(aligned_ptr + num_pages * (ull)PAGE_SIZE);
@@ -46,8 +48,10 @@ char *alloc_block_in_cluster(size_t size) {
 
 	if (res == nullptr) {
 		res = add_pseudo_free_cluster_and_get_block(&first_stor, optimal_rang);
+		if (res == nullptr) {
+			return nullptr;
+		}
 	}
-	print("    after malloc\n");
 	return res;
 }
 
@@ -64,7 +68,7 @@ void free_block_in_clster(char *ptr) {
 }
 
 char *realloc_block_in_cluster(char *ptr, size_t new_size) {
-	size_t old_size = (1<<-cluster::get_rang(ptr)) - cluster::SERV_DATA_SIZE;
+	size_t old_size = (1<<-cluster::get_rang(ptr - cluster::SERV_DATA_SIZE)) - cluster::SERV_DATA_SIZE;
 	cluster *c = get_begin_of_cluster(ptr);
 
 	std::unique_lock<std::recursive_mutex> u_lock(c->cluster_mutex);
@@ -101,7 +105,7 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 		u_lock.release();
 		return nullptr;
 	}
-	
+
 	std::memcpy(res, ptr, std::min(new_size, old_size));
 	u_lock.lock();
 

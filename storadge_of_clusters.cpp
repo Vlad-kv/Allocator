@@ -66,6 +66,11 @@ char *storadge_of_clusters::get_block(size_t rang) {
 }
 
 void storadge_of_clusters::add_cluster(cluster *c) { // берёт storagde_mutex и cluster_mutex
+	if (c == nullptr) {
+		// TODO
+		fatal_error("not implemented\n");
+	}
+
 	std::lock_guard<std::recursive_mutex> lg(storagde_mutex);
 	std::lock_guard<std::recursive_mutex> lg_2(c->cluster_mutex);
 

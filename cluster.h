@@ -24,10 +24,13 @@ public:
 private:
 	typedef long long ll;
 
+	void *first_block_of_data;
+
 	char *storage;
 	char* levels[MAX_RANG + 1];
 	ll available_memory = 0;
 public:
+
 	cluster *prev_cluster, *next_cluster;
 	std::recursive_mutex cluster_mutex;
 
@@ -35,9 +38,6 @@ public:
 	int old_max_available_rang; // cluster в его storadge_of_clusters
 
 	storadge_of_clusters *this_storadge_of_clusters;
-
-	char* position_of_mapping;
-	size_t size_of_mapping;
 
 	static int32_t get_rang(char *ptr);
 	void set_rang(char *ptr, int32_t val);
@@ -73,7 +73,7 @@ private:
 		print("\n");
 	}
 
-	void update_max_available_rang() { // пересчитывает max_available_rang, но сам ничего со своим расположение в storadge_of_clusters не делает
+	void update_max_available_rang() { // пересчитывает max_available_rang, но сам ничего со своим расположением в storadge_of_clusters не делает
 		int w = MAX_RANG;
 		while ((w >= MIN_RANG) && (levels[w] == nullptr)) {
 			w--;
@@ -85,7 +85,7 @@ private:
 	void add_to_begin(int level, char* block);
 	char* split(char* block, ll neded_level);
 
-	cluster(char* position_of_mapping, size_t size_of_mapping);
+	cluster();
 public:
 
 	char *alloc(size_t size);
@@ -95,8 +95,7 @@ public:
 	friend cluster* create_cluster();
 };
 
-static_assert(PAGE_SIZE == (1<<cluster::RESERVED_RANG), "invalid RESERVED_RANG");
-static_assert((1<<cluster::RESERVED_RANG) - cluster::SERV_DATA_SIZE >= sizeof(cluster), "too small RESERVED_RANG");
+static_assert((1<<cluster::RESERVED_RANG) >= sizeof(cluster), "too small RESERVED_RANG");
 static_assert(cluster::RESERVED_RANG < cluster::MAX_RANG, "too big reserved rang");
 
 static_assert(cluster::MAX_RANG <= RANG_OF_CLUSTERS, "invalid RANG_OF_CLUSTERS");

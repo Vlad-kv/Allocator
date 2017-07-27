@@ -7,3 +7,5 @@ char buffer_for_print[BUFFER_FOR_PRINT_SIZE];
 int buffer_pos = 0;
 int num_alive_writers = 0;
 
+void lok_print() {
+}

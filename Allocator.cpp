@@ -141,23 +141,20 @@ extern "C" void free(void *ptr) {
 	    if (ptr == nullptr) {
 	    	return;
 	    }
-
-	    print("    after check_init\n");
 	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % PAGE_SIZE;
-	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
-	    print("    after get_num_of_pages_to_begin\n");
+	    if (aligned_ptr == (char*)ptr) {
+	    	free_big_block((char*)ptr);
+	    	return;
+	    }
+	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
 	    if (num_pages < 0) {
 	    	free_block_in_clster((char*)ptr);
 	    }
-	    if (num_pages == 0) {
-	    	free_big_block((char*)ptr);
-	    }
 	    if (num_pages > 0) {
 	    	free_block_in_slab((char*)ptr);
 	    }
-	    print("    after free\n");
     #endif
 }
 
@@ -209,7 +206,6 @@ extern "C" void *calloc(size_t nmemb, size_t size) {
 	    for (size_t w = 0; w < nmemb * size; w++) {
 	    	res[w] = 0;
 	    }
-	    print("    after calloc\n");
 	    return res;
     #endif
 }
@@ -217,7 +213,7 @@ extern "C" void *calloc(size_t nmemb, size_t size) {
 extern "C" void *realloc(void *ptr, size_t size) {
 	std::lock_guard<std::recursive_mutex> lg(test_mutex);
 
-	print("realloc catched\n");
+	print("realloc catched: ", size, "\n");
 
 	#ifdef ORIGINAL
 	    if (realloc_original == nullptr) {
@@ -240,15 +236,16 @@ extern "C" void *realloc(void *ptr, size_t size) {
 	    }
 
 	    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % PAGE_SIZE;
+
+	    if (aligned_ptr == (char*)ptr) {
+	    	return realloc_big_block((char*)ptr, size);
+	    }
+
 	    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
 	    if (num_pages < 0) {
 	    	return realloc_block_in_cluster((char*)ptr, size);
-	    }
-	    if (num_pages == 0) {
-	    	return realloc_big_block((char*)ptr, size);
-	    }
-	    if (num_pages > 0) {
+	    } else {
 	    	return realloc_block_in_slab((char*)ptr, size);
 	    }
     #endif
