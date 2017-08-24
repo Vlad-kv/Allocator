@@ -159,7 +159,7 @@ extern "C" void free(void *ptr) {
 	    if (num_pages < 0) {
 	    	free_block_in_clster((char*)ptr);
 	    }
-	    if (num_pages > 0) {
+	    if (num_pages >= 0) {
 	    	free_block_in_slab((char*)ptr);
 	    }
     #endif
