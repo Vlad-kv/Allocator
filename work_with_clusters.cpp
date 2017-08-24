@@ -36,7 +36,7 @@ cluster *get_begin_of_cluster(char *ptr) {
 	char* aligned_ptr = (char*)(ptr - ((ull)ptr) % PAGE_SIZE);
 	int num_pages = get_num_of_pages_to_begin(aligned_ptr) + 1;
 
-	my_assert(num_pages < 0, "invalid num_pages");
+	my_assert(num_pages <= 0, "invalid num_pages");
 	return (cluster*)(aligned_ptr + num_pages * (ull)PAGE_SIZE);
 }
 

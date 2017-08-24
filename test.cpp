@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <dlfcn.h>
 #include <unistd.h>
+#include <cassert>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -14,10 +15,13 @@
 
 using namespace std;
 
+typedef unsigned long long ull;
+
 static void* (*malloc_original)(size_t size) = nullptr;
 static void (*free_original)(void *ptr) = nullptr;
 static void* (*calloc_original)(size_t nmemb, size_t size) = nullptr;
 static void* (*realloc_original)(void *ptr, size_t size) = nullptr;
+static int (*posix_memalign_original)(void **memptr, size_t alignment, size_t size) = nullptr;
 
 const int MAX_SUMM_MEMORY = 2000000;
 const int MAX_SIZE = 4000;
@@ -25,6 +29,8 @@ const int NUM_TO_FREE_IN_BIG_FREE = 200;
 
 const int MIN_SIZE_TO_ALLOC = 40;
 const int MAX_SIZE_TO_ALLOC = 100000;
+
+const int MIN_MEMALIGN = 3, MAX_MEMALIGN = 15;
 
 static_assert(MIN_SIZE_TO_ALLOC <= MAX_SIZE_TO_ALLOC, "MIN_SIZE_TO_ALLOC must be <= MAX_SIZE_TO_ALLOC");
 
@@ -74,6 +80,32 @@ void make_malloc(size_t size) {
 		cout << "nullptr in malloc";
 		exit(1);
 	}
+	for (int w = 0; w < size; w++) {
+		a_orig[a_size][w] = a_my[a_size][w] = (char)rand();
+	}
+	alloc_size[a_size] = size;
+	a_size++;
+	summ_memory += size;
+}
+
+void make_posix_memalign(size_t alignment, size_t size) {
+	if (a_size == MAX_SIZE) {
+		big_free();
+	}
+	while (size > MAX_SUMM_MEMORY - summ_memory) {
+		big_free();
+	}
+
+	int res_1 = posix_memalign_original((void**)&a_orig[a_size], alignment, size);
+	int res_2 = posix_memalign((void**)&a_my[a_size], alignment, size);
+
+	if (res_2 != 0) {
+		cout << "error in make_posix_memalign\n";
+		exit(1);
+	}
+
+	assert((ull)a_my[a_size] % alignment == 0);
+
 	for (int w = 0; w < size; w++) {
 		a_orig[a_size][w] = a_my[a_size][w] = (char)rand();
 	}
@@ -155,11 +187,13 @@ void big_check() {
 
 const int STEP = 10;
 
-void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int num_modifications) {
+void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
+		int num_modifications, int num_posix_memaligns) {
 	num_reallocs += num_mallocs;
 	num_callocs += num_reallocs;
 	num_free += num_callocs;
 	num_modifications += num_free;
+	num_posix_memaligns += num_modifications;
 
 	for (int w = 0; w < 100000; w++) {
 		if ((w != 0) && (w % STEP == 0)) {
@@ -168,7 +202,7 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int 
 			cout << "big_check perfomed\n";
 		}
 
-		int c = rand() % num_free;
+		int c = rand() % num_posix_memaligns;
 
 		if (c < num_mallocs) {
 			make_malloc(get_size());
@@ -189,10 +223,22 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int 
 			continue;
 		}
 		if (c < num_modifications) {
-			int no = rand() % a_size;
-			int pos = rand() % alloc_size[no];
+			if (a_size > 0) {
+				int no = rand() % a_size;
+				int pos = rand() % alloc_size[no];
 
-			a_orig[no][pos] = a_my[no][pos] = (char)rand();
+				a_orig[no][pos] = a_my[no][pos] = (char)rand();
+			}
+			continue;
+		}
+		if (c < num_posix_memaligns) {
+			int c = rand() % (MAX_MEMALIGN - MIN_MEMALIGN + 1) + MIN_MEMALIGN;
+			int alignment = 1;
+			while (c > 0) {
+				c--;
+				alignment *= 2;
+			}
+			make_posix_memalign(alignment, get_size());
 			continue;
 		}
 	}
@@ -202,13 +248,18 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free, int 
 }
 
 int main(int argc, char *argv[]) {
+	/*
 	malloc_original = (void* (*)(size_t size))malloc(-1);
 	free_original = (void (*)(void *ptr))malloc(-2);
 	calloc_original = (void* (*)(size_t, size_t))malloc(-3);
 	realloc_original = (void* (*)(void *, size_t))malloc(-4);
+	posix_memalign_original = (int (*)(void **memptr, size_t alignment, size_t size))malloc(-5);
 
 	srand(5);
 
-	test(30, 40, 30, 10, 20);
+	test(30, 40, 30, 60, 20, 50);*/
+
+	system("subl");
+
 	return 0;
 }

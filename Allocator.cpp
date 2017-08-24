@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <mutex>
 #include <atomic>
+#include <sys/mman.h>
 
 #include "debug.h"
 
@@ -18,13 +19,14 @@
 #define WRITE(str) write(1, str, strlen(str));
 
 typedef unsigned long long ull;
+using namespace std;
 
 storadge_of_clusters first_stor;
 
-std::recursive_mutex test_mutex;
+recursive_mutex test_mutex;
 
-std::atomic_bool is_initialized;
-std::mutex init_mutex;
+atomic_bool is_initialized;
+mutex init_mutex;
 
 void initialize() {
 	first_stor.init();
@@ -37,7 +39,7 @@ void check_init() {
 	if (is_initialized.load() == true) {
 		return;
 	}
-	std::lock_guard<std::mutex> lg(init_mutex);
+	lock_guard<mutex> lg(init_mutex);
 
 	if (is_initialized.load() == true) {
 		return;
@@ -60,7 +62,7 @@ void check_init() {
 #endif
 
 extern "C" void *malloc(size_t size) {
-	std::lock_guard<std::recursive_mutex> lg(test_mutex);
+	lock_guard<recursive_mutex> lg(test_mutex);
 
 	if (num_alive_writers > 0) {
 		// WRITE("  malloc for print\n");
@@ -85,6 +87,9 @@ extern "C" void *malloc(size_t size) {
 	if (size == (size_t)-4) {
 		return dlsym(RTLD_NEXT, "realloc");
 	}
+	if (size == (size_t)-5) {
+		return dlsym(RTLD_NEXT, "posix_memalign");
+	}
 
 	print("malloc catched: ", size, "\n");
 
@@ -108,14 +113,16 @@ extern "C" void *malloc(size_t size) {
 			return alloc_block_in_slab(size);
 		}
 		if (size <= MAX_SIZE_TO_ALLOC_IN_CLUSTERS) {
-			return alloc_block_in_cluster(size);
+			char *res = alloc_block_in_cluster(size);
+			print("after malloc\n");
+			return res;
 		}
 		return alloc_big_block(size);
 	#endif
 }
 
 extern "C" void free(void *ptr) {
-	std::lock_guard<std::recursive_mutex> lg(test_mutex);
+	lock_guard<recursive_mutex> lg(test_mutex);
 
 	if (num_alive_writers > 0) {
 		// WRITE("  free for print\n");
@@ -159,7 +166,7 @@ extern "C" void free(void *ptr) {
 }
 
 extern "C" void *calloc(size_t nmemb, size_t size) {
-	std::lock_guard<std::recursive_mutex> lg(test_mutex);
+	lock_guard<recursive_mutex> lg(test_mutex);
 
 	print("calloc catched : ", nmemb, " ", size, "\n");
 
@@ -211,7 +218,7 @@ extern "C" void *calloc(size_t nmemb, size_t size) {
 }
 
 extern "C" void *realloc(void *ptr, size_t size) {
-	std::lock_guard<std::recursive_mutex> lg(test_mutex);
+	lock_guard<recursive_mutex> lg(test_mutex);
 
 	print("realloc catched: ", size, "\n");
 
@@ -251,10 +258,18 @@ extern "C" void *realloc(void *ptr, size_t size) {
     #endif
 }
 
-extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
-	std::lock_guard<std::recursive_mutex> lg(test_mutex);
+extern "C" void *reallocarray(void *ptr, size_t nmemb, size_t size) {
+	lock_guard<recursive_mutex> lg(test_mutex);
+	if ((nmemb * size) / size != nmemb) {
+		return nullptr;
+	}
+	return realloc(ptr, nmemb * size);
+}
 
-	print("posix_memalign catched\n");
+extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
+	lock_guard<recursive_mutex> lg(test_mutex);
+
+	print("posix_memalign catched: ", alignment, " ", size, "\n");
 
 	#ifdef ORIGINAL
 	    if (posix_memalign_original == nullptr) {
@@ -264,12 +279,57 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 	            return ENOMEM;
 	        }
 	    }
-	    return posix_memalign(memptr, alignment, size);
+	    return posix_memalign_original(memptr, alignment, size);
 	#else
 	    check_init();
-	    // TODO сделать
-		fatal_error("Not implemented.");
+	    if (alignment == 8) {
+	    	void* res = malloc(size);
+	    	if (res == nullptr) {
+	    		return ENOMEM;
+	    	}
+	    	*memptr = res;
+	    	return 0;
+	    }
+		
+		if ((alignment < 8) || ((alignment & (alignment - 1)) != 0)) {
+	    	return EINVAL;
+	    }
+	    if (size == 0) {
+	    	*memptr = nullptr;
+	    	return 0;
+	    }
+	    
+	    if (size % PAGE_SIZE != 0) {
+	    	size += PAGE_SIZE - size % PAGE_SIZE;
+	    }
+		alignment = max(alignment, PAGE_SIZE);
+
+		char *block = (char*)mmap(nullptr, size + alignment, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		if (block == MAP_FAILED) {
+			return ENOMEM;
+		}
+		ull left_shift = alignment - PAGE_SIZE - ((ull)block % alignment);
+		ull right_shift = alignment - PAGE_SIZE - left_shift;
+
+		if (left_shift > 0) {
+			int error = munmap(block, left_shift);
+			my_assert(error == 0, "error in munmup in posix_memalign (left_shift): ", errno);
+		}
+		if (right_shift > 0) {
+			int error = munmap(block + size + alignment - right_shift, right_shift);
+			my_assert(error == 0, "error in munmup in posix_memalign (right_shift): ", errno);
+		}
+
+		block += left_shift;
+
+		char *res = block + PAGE_SIZE;
+
+	    *(char**)(res - 3 * sizeof(char*)) = block;
+		*(size_t*)(res - 2 * sizeof(char*)) = size + PAGE_SIZE;
+
+		*memptr = res;
+		return 0;
     #endif
 }
 
-// LD_PRELOAD=./libAllocator.so ./test.exe
+// LD_PRELOAD=./libAllocator.so subl

@@ -20,7 +20,7 @@ public:
 	static const int32_t MIN_RANG = CLUSTER_MIN_RANG;
 	static const int32_t SHIFT = 16;
 	static const int32_t SERV_DATA_SIZE = CLUSTER_SERV_DATA_SIZE;
-	static const int32_t RESERVED_RANG = 12;
+	static const int32_t RESERVED_RANG = 8;
 private:
 	typedef long long ll;
 

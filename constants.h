@@ -1,12 +1,14 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <cstdio>
+
 namespace {
-	const int RANG_OF_CLUSTERS = 20;
+	const int RANG_OF_CLUSTERS = 17;
 
-	const int PAGE_SIZE = 4096;
+	const size_t PAGE_SIZE = 4096;
 
-	const int CLUSTER_MAX_RANG = 17;
+	const int CLUSTER_MAX_RANG = 14;
 	const int CLUSTER_MIN_RANG = 6;
 	const int CLUSTER_SERV_DATA_SIZE = 8;
 
