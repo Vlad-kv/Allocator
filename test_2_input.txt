@@ -1,0 +1,992 @@
+991
+malloc 104 1 
+malloc 512 2 
+malloc 104 3 
+malloc 512 4 
+malloc 104 5 
+malloc 512 6 
+malloc 104 7 
+malloc 512 8 
+malloc 104 9 
+malloc 512 10 
+malloc 56 11 
+malloc 56 12 
+malloc 56 13 
+malloc 56 14 
+malloc 80 15 
+malloc 56 16 
+malloc 15 17 
+malloc 56 18 
+malloc 15 19 
+malloc 56 20 
+malloc 12 21 
+malloc 56 22 
+malloc 14 23 
+malloc 56 24 
+malloc 19 25 
+malloc 56 26 
+malloc 20 27 
+malloc 56 28 
+malloc 15 29 
+malloc 56 30 
+malloc 15 31 
+malloc 56 32 
+malloc 12 33 
+malloc 56 34 
+malloc 14 35 
+malloc 56 36 
+malloc 19 37 
+malloc 56 38 
+malloc 20 39 
+malloc 56 40 
+malloc 15 41 
+malloc 56 42 
+malloc 15 43 
+malloc 56 44 
+malloc 12 45 
+malloc 56 46 
+malloc 14 47 
+malloc 56 48 
+malloc 19 49 
+malloc 56 50 
+realloc 0 64 51 
+realloc 51 1024 52 
+free 8 
+malloc 20 53 
+malloc 56 54 
+malloc 15 55 
+malloc 56 56 
+malloc 15 57 
+malloc 56 58 
+malloc 12 59 
+malloc 56 60 
+malloc 14 61 
+malloc 56 62 
+malloc 19 63 
+malloc 56 64 
+malloc 20 65 
+malloc 56 66 
+malloc 80 67 
+malloc 56 68 
+malloc 56 69 
+malloc 56 70 
+malloc 56 71 
+malloc 104 72 
+malloc 512 73 
+malloc 104 74 
+malloc 512 75 
+malloc 104 76 
+malloc 512 77 
+malloc 56 78 
+malloc 56 79 
+malloc 104 80 
+malloc 512 81 
+malloc 104 82 
+malloc 512 83 
+malloc 104 84 
+malloc 512 85 
+malloc 56 86 
+malloc 56 87 
+malloc 56 88 
+malloc 56 89 
+malloc 10 90 
+malloc 56 91 
+malloc 12 92 
+malloc 56 93 
+malloc 10 94 
+malloc 56 95 
+malloc 10 96 
+malloc 56 97 
+malloc 56 98 
+malloc 56 99 
+malloc 64 100 
+malloc 104 101 
+malloc 512 102 
+malloc 56 103 
+malloc 56 104 
+malloc 56 105 
+malloc 104 106 
+malloc 512 107 
+calloc 1 1040 108 
+malloc 104 109 
+malloc 512 110 
+malloc 56 111 
+malloc 56 112 
+malloc 56 113 
+malloc 56 114 
+malloc 56 115 
+malloc 104 116 
+malloc 512 117 
+malloc 56 118 
+malloc 104 119 
+malloc 512 120 
+malloc 104 121 
+malloc 512 122 
+malloc 56 123 
+malloc 56 124 
+malloc 56 125 
+malloc 56 126 
+malloc 56 127 
+malloc 104 128 
+malloc 512 129 
+malloc 104 130 
+malloc 512 131 
+malloc 1024 132 
+malloc 16 133 
+free 0 
+malloc 1024 134 
+malloc 32 135 
+free 133 
+malloc 1024 136 
+malloc 64 137 
+free 135 
+malloc 1024 138 
+malloc 104 139 
+malloc 512 140 
+malloc 104 141 
+malloc 512 142 
+malloc 104 143 
+malloc 512 144 
+malloc 104 145 
+malloc 512 146 
+malloc 104 147 
+malloc 512 148 
+calloc 1 1040 149 
+malloc 40 150 
+malloc 7 151 
+malloc 32 152 
+malloc 40 153 
+malloc 7 154 
+malloc 32 155 
+malloc 24 156 
+malloc 1024 157 
+malloc 128 158 
+free 137 
+malloc 1024 159 
+malloc 1024 160 
+malloc 1024 161 
+malloc 1024 162 
+malloc 256 163 
+free 158 
+malloc 1024 164 
+malloc 1024 165 
+malloc 1024 166 
+malloc 1024 167 
+malloc 1024 168 
+malloc 1024 169 
+malloc 1024 170 
+malloc 1024 171 
+malloc 512 172 
+free 163 
+malloc 1024 173 
+malloc 1024 174 
+malloc 1024 175 
+malloc 1024 176 
+malloc 1024 177 
+malloc 1024 178 
+malloc 1024 179 
+malloc 1024 180 
+malloc 1024 181 
+malloc 1024 182 
+malloc 1024 183 
+malloc 1024 184 
+malloc 1024 185 
+malloc 104 186 
+malloc 512 187 
+malloc 104 188 
+malloc 512 189 
+malloc 64 190 
+malloc 104 191 
+malloc 512 192 
+malloc 104 193 
+malloc 512 194 
+malloc 56 195 
+malloc 56 196 
+malloc 104 197 
+malloc 512 198 
+malloc 104 199 
+malloc 512 200 
+malloc 104 201 
+malloc 512 202 
+malloc 104 203 
+malloc 512 204 
+malloc 80 205 
+malloc 56 206 
+malloc 56 207 
+malloc 104 208 
+malloc 512 209 
+malloc 56 210 
+malloc 56 211 
+malloc 104 212 
+malloc 512 213 
+malloc 104 214 
+malloc 512 215 
+malloc 56 216 
+malloc 56 217 
+malloc 56 218 
+malloc 56 219 
+malloc 56 220 
+malloc 56 221 
+malloc 104 222 
+malloc 512 223 
+malloc 104 224 
+malloc 512 225 
+malloc 104 226 
+malloc 512 227 
+malloc 56 228 
+calloc 1 1040 229 
+malloc 104 230 
+malloc 512 231 
+malloc 104 232 
+malloc 512 233 
+malloc 104 234 
+malloc 512 235 
+malloc 64 236 
+malloc 512 237 
+calloc 1 32 238 
+malloc 43 239 
+free 239 
+malloc 43 240 
+free 240 
+malloc 40 241 
+calloc 1182 1 242 
+malloc 40 243 
+malloc 43 244 
+calloc 1185 1 245 
+malloc 43 246 
+malloc 45 247 
+calloc 1187 1 248 
+malloc 45 249 
+malloc 43 250 
+calloc 1185 1 251 
+malloc 43 252 
+malloc 36 253 
+calloc 1182 1 254 
+malloc 36 255 
+malloc 42 256 
+calloc 1184 1 257 
+malloc 42 258 
+malloc 45 259 
+calloc 1187 1 260 
+malloc 45 261 
+malloc 42 262 
+calloc 1184 1 263 
+malloc 42 264 
+malloc 39 265 
+calloc 1181 1 266 
+malloc 39 267 
+malloc 32 268 
+calloc 1178 1 269 
+malloc 32 270 
+malloc 88 271 
+malloc 36 272 
+calloc 1182 1 273 
+malloc 36 274 
+malloc 88 275 
+malloc 72 276 
+malloc 72 277 
+malloc 56 278 
+malloc 56 279 
+malloc 56 280 
+malloc 56 281 
+malloc 40 282 
+malloc 40 283 
+malloc 344 284 
+calloc 12 24 285 
+calloc 8 24 286 
+calloc 9 24 287 
+calloc 8 24 288 
+calloc 9 24 289 
+calloc 4 24 290 
+calloc 4 24 291 
+calloc 5 24 292 
+calloc 6 24 293 
+calloc 18 24 294 
+calloc 5 24 295 
+calloc 2064 1 296 
+calloc 2064 1 297 
+calloc 2064 1 298 
+calloc 2064 1 299 
+calloc 2064 1 300 
+calloc 2064 1 301 
+malloc 47 302 
+free 302 
+malloc 47 303 
+free 303 
+malloc 44 304 
+calloc 1186 1 305 
+malloc 44 306 
+malloc 39 307 
+calloc 1181 1 308 
+malloc 39 309 
+malloc 41 310 
+calloc 1183 1 311 
+malloc 41 312 
+malloc 56 313 
+malloc 40 314 
+malloc 184 315 
+calloc 8 24 316 
+calloc 9 24 317 
+calloc 9 24 318 
+malloc 52 319 
+free 319 
+malloc 52 320 
+free 320 
+malloc 49 321 
+calloc 1191 1 322 
+malloc 49 323 
+malloc 47 324 
+calloc 1189 1 325 
+malloc 47 326 
+malloc 43 327 
+calloc 1185 1 328 
+malloc 43 329 
+malloc 168 330 
+malloc 44 331 
+calloc 1186 1 332 
+malloc 44 333 
+malloc 88 334 
+malloc 40 335 
+malloc 520 336 
+calloc 5 24 337 
+calloc 5 24 338 
+calloc 6 24 339 
+calloc 4 24 340 
+malloc 49 341 
+free 341 
+malloc 49 342 
+free 342 
+malloc 46 343 
+calloc 1188 1 344 
+malloc 46 345 
+malloc 49 346 
+calloc 1191 1 347 
+malloc 49 348 
+malloc 42 349 
+calloc 1184 1 350 
+malloc 42 351 
+malloc 43 352 
+calloc 1185 1 353 
+malloc 43 354 
+malloc 37 355 
+calloc 1179 1 356 
+malloc 37 357 
+malloc 41 358 
+calloc 1183 1 359 
+malloc 41 360 
+malloc 42 361 
+calloc 1184 1 362 
+malloc 42 363 
+malloc 45 364 
+calloc 1187 1 365 
+malloc 45 366 
+malloc 42 367 
+calloc 1184 1 368 
+malloc 42 369 
+malloc 41 370 
+calloc 1183 1 371 
+malloc 41 372 
+malloc 46 373 
+calloc 1188 1 374 
+malloc 46 375 
+malloc 136 376 
+malloc 38 377 
+calloc 1184 1 378 
+malloc 38 379 
+malloc 37 380 
+calloc 1183 1 381 
+malloc 37 382 
+malloc 136 383 
+malloc 72 384 
+malloc 72 385 
+malloc 88 386 
+malloc 88 387 
+malloc 56 388 
+malloc 56 389 
+malloc 56 390 
+malloc 72 391 
+malloc 88 392 
+malloc 40 393 
+malloc 728 394 
+calloc 7 24 395 
+calloc 7 24 396 
+calloc 12 24 397 
+calloc 3 24 398 
+calloc 6 24 399 
+calloc 5 24 400 
+calloc 7 24 401 
+calloc 3 24 402 
+calloc 3 24 403 
+calloc 4 24 404 
+calloc 5 24 405 
+calloc 12 24 406 
+calloc 11 24 407 
+malloc 64 408 
+malloc 64 409 
+malloc 64 410 
+malloc 64 411 
+malloc 64 412 
+malloc 64 413 
+malloc 64 414 
+malloc 64 415 
+malloc 64 416 
+malloc 64 417 
+malloc 64 418 
+malloc 64 419 
+malloc 64 420 
+malloc 64 421 
+malloc 552 422 
+malloc 120 423 
+malloc 1024 424 
+free 423 
+free 424 
+free 422 
+free 0 
+malloc 49 425 
+free 425 
+malloc 49 426 
+free 426 
+malloc 46 427 
+calloc 1188 1 428 
+malloc 46 429 
+malloc 42 430 
+calloc 1184 1 431 
+malloc 42 432 
+malloc 72 433 
+malloc 760 434 
+calloc 10 24 435 
+calloc 4 24 436 
+malloc 64 437 
+malloc 64 438 
+malloc 64 439 
+malloc 64 440 
+malloc 45 441 
+free 441 
+malloc 45 442 
+free 442 
+malloc 216 443 
+free 383 
+malloc 64 444 
+malloc 64 445 
+malloc 64 446 
+malloc 64 447 
+malloc 34 448 
+malloc 34 449 
+malloc 32 450 
+malloc 40 451 
+malloc 40 452 
+malloc 38 453 
+malloc 38 454 
+malloc 36 455 
+malloc 39 456 
+malloc 39 457 
+malloc 37 458 
+malloc 37 459 
+malloc 41 460 
+malloc 35 461 
+malloc 28 462 
+malloc 30 463 
+malloc 31 464 
+malloc 30 465 
+malloc 28 466 
+malloc 31 467 
+malloc 34 468 
+malloc 34 469 
+malloc 32 470 
+malloc 40 471 
+malloc 40 472 
+malloc 38 473 
+malloc 38 474 
+malloc 36 475 
+malloc 39 476 
+malloc 39 477 
+malloc 37 478 
+malloc 37 479 
+malloc 41 480 
+malloc 35 481 
+malloc 28 482 
+malloc 30 483 
+malloc 31 484 
+malloc 30 485 
+malloc 28 486 
+malloc 31 487 
+malloc 34 488 
+malloc 34 489 
+malloc 32 490 
+malloc 40 491 
+malloc 40 492 
+malloc 38 493 
+malloc 38 494 
+malloc 36 495 
+malloc 39 496 
+malloc 39 497 
+malloc 37 498 
+malloc 37 499 
+malloc 41 500 
+malloc 35 501 
+malloc 28 502 
+malloc 30 503 
+malloc 31 504 
+malloc 30 505 
+malloc 28 506 
+malloc 31 507 
+malloc 34 508 
+malloc 34 509 
+malloc 32 510 
+malloc 40 511 
+malloc 40 512 
+malloc 38 513 
+malloc 38 514 
+malloc 36 515 
+malloc 39 516 
+malloc 39 517 
+malloc 37 518 
+malloc 37 519 
+malloc 41 520 
+malloc 35 521 
+malloc 28 522 
+malloc 30 523 
+malloc 31 524 
+malloc 30 525 
+malloc 28 526 
+malloc 31 527 
+calloc 1 1040 528 
+malloc 34 529 
+malloc 34 530 
+malloc 32 531 
+malloc 40 532 
+malloc 40 533 
+malloc 38 534 
+malloc 38 535 
+malloc 36 536 
+malloc 39 537 
+malloc 39 538 
+malloc 37 539 
+malloc 37 540 
+malloc 41 541 
+malloc 35 542 
+malloc 28 543 
+malloc 30 544 
+malloc 31 545 
+malloc 30 546 
+malloc 28 547 
+malloc 31 548 
+malloc 34 549 
+malloc 34 550 
+malloc 32 551 
+malloc 40 552 
+malloc 40 553 
+malloc 38 554 
+malloc 38 555 
+malloc 36 556 
+malloc 39 557 
+malloc 39 558 
+malloc 37 559 
+malloc 37 560 
+malloc 41 561 
+malloc 35 562 
+malloc 28 563 
+malloc 30 564 
+malloc 31 565 
+malloc 30 566 
+malloc 28 567 
+malloc 31 568 
+malloc 29 569 
+malloc 40 570 
+malloc 120 571 
+malloc 33 572 
+malloc 66 573 
+malloc 107 574 
+free 573 
+free 572 
+malloc 24 575 
+malloc 8192 576 
+malloc 8 577 
+malloc 68 578 
+free 578 
+malloc 8 579 
+free 568 
+free 567 
+free 566 
+free 565 
+free 564 
+free 563 
+free 562 
+free 561 
+free 560 
+free 559 
+free 558 
+free 557 
+free 556 
+free 555 
+free 554 
+free 553 
+free 552 
+free 551 
+free 550 
+free 549 
+free 548 
+free 547 
+free 546 
+free 545 
+free 544 
+free 543 
+free 542 
+free 541 
+free 540 
+free 539 
+free 538 
+free 537 
+free 536 
+free 535 
+free 534 
+free 533 
+free 532 
+free 531 
+free 530 
+free 529 
+free 528 
+free 527 
+free 526 
+free 525 
+free 524 
+free 523 
+free 522 
+free 521 
+free 520 
+free 519 
+free 518 
+free 517 
+free 516 
+free 515 
+free 514 
+free 513 
+free 512 
+free 511 
+free 510 
+free 509 
+free 508 
+free 507 
+free 506 
+free 505 
+free 504 
+free 503 
+free 502 
+free 501 
+free 500 
+free 499 
+free 498 
+free 497 
+free 496 
+free 495 
+free 494 
+free 493 
+free 492 
+free 491 
+free 490 
+free 489 
+free 488 
+free 487 
+free 486 
+free 485 
+free 484 
+free 483 
+free 482 
+free 481 
+free 480 
+free 479 
+free 478 
+free 477 
+free 476 
+free 475 
+free 474 
+free 473 
+free 472 
+free 471 
+free 470 
+free 469 
+free 468 
+free 467 
+free 466 
+free 465 
+free 464 
+free 463 
+free 462 
+free 461 
+free 460 
+free 459 
+free 458 
+free 457 
+free 456 
+free 455 
+free 454 
+free 453 
+free 452 
+free 451 
+free 450 
+free 449 
+free 448 
+free 579 
+free 237 
+free 236 
+free 235 
+free 234 
+free 233 
+free 232 
+free 231 
+free 230 
+free 228 
+free 227 
+free 226 
+free 229 
+free 225 
+free 224 
+free 223 
+free 222 
+free 216 
+free 217 
+free 220 
+free 219 
+free 218 
+free 221 
+free 215 
+free 214 
+free 213 
+free 212 
+free 210 
+free 211 
+free 209 
+free 208 
+free 205 
+free 207 
+free 206 
+free 204 
+free 203 
+free 202 
+free 201 
+free 200 
+free 199 
+free 198 
+free 197 
+free 195 
+free 196 
+free 194 
+free 193 
+free 192 
+free 191 
+free 190 
+free 189 
+free 188 
+free 187 
+free 186 
+free 151 
+free 152 
+free 150 
+free 154 
+free 155 
+free 153 
+free 156 
+free 149 
+free 148 
+free 147 
+free 146 
+free 145 
+free 144 
+free 143 
+free 142 
+free 141 
+free 140 
+free 139 
+free 172 
+free 185 
+free 184 
+free 183 
+free 182 
+free 181 
+free 180 
+free 179 
+free 178 
+free 177 
+free 176 
+free 175 
+free 174 
+free 173 
+free 171 
+free 170 
+free 169 
+free 168 
+free 167 
+free 166 
+free 165 
+free 164 
+free 162 
+free 161 
+free 160 
+free 159 
+free 157 
+free 138 
+free 136 
+free 134 
+free 132 
+free 131 
+free 130 
+free 129 
+free 128 
+free 124 
+free 127 
+free 125 
+free 123 
+free 126 
+free 122 
+free 121 
+free 120 
+free 119 
+free 118 
+free 117 
+free 116 
+free 112 
+free 115 
+free 113 
+free 111 
+free 114 
+free 110 
+free 109 
+free 107 
+free 106 
+free 108 
+free 104 
+free 103 
+free 105 
+free 102 
+free 101 
+free 94 
+free 95 
+free 99 
+free 96 
+free 97 
+free 92 
+free 93 
+free 98 
+free 100 
+free 90 
+free 91 
+free 83 
+free 82 
+free 86 
+free 89 
+free 88 
+free 87 
+free 85 
+free 84 
+free 81 
+free 80 
+free 78 
+free 79 
+free 77 
+free 76 
+free 75 
+free 74 
+free 73 
+free 72 
+free 69 
+free 37 
+free 38 
+free 53 
+free 54 
+free 29 
+free 30 
+free 31 
+free 32 
+free 45 
+free 46 
+free 19 
+free 20 
+free 55 
+free 56 
+free 39 
+free 40 
+free 41 
+free 42 
+free 49 
+free 50 
+free 35 
+free 36 
+free 27 
+free 28 
+free 59 
+free 60 
+free 71 
+free 47 
+free 48 
+free 43 
+free 44 
+free 61 
+free 62 
+free 63 
+free 64 
+free 21 
+free 22 
+free 25 
+free 26 
+free 33 
+free 34 
+free 57 
+free 58 
+free 67 
+free 68 
+free 23 
+free 24 
+free 70 
+free 17 
+free 18 
+free 65 
+free 66 
+free 52 
+free 7 
+free 11 
+free 13 
+free 12 
+free 16 
+free 14 
+free 15 
+free 10 
+free 9 
+free 6 
+free 5 
+free 4 
+free 3 
+free 2 
+free 1 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 
+free 0 

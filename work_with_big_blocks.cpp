@@ -70,3 +70,7 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 	my_assert(error == 0, "error in munmup in free_big_block");
 	return res;
 }
+
+size_t malloc_usable_size_big_block(char *ptr) {
+	return *(size_t*)(ptr - 2 * sizeof(char*));
+}

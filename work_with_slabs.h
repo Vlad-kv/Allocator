@@ -16,4 +16,6 @@ void free_block_in_slab(char *ptr);
 
 char *realloc_block_in_slab(char *ptr, size_t new_size);
 
+size_t malloc_usable_size_in_slab(char *ptr);
+
 #endif

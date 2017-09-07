@@ -68,7 +68,7 @@ cluster::cluster()
 
 	max_available_rang = MAX_RANG;
 
-	available_memory = 1<<RANG_OF_CLUSTERS;
+	available_memory = (1<<RANG_OF_CLUSTERS) - (1<<RESERVED_RANG);
 	for (int w = MIN_RANG; w <= MAX_RANG; w++) {
 		levels[w] = nullptr;
 	}
@@ -118,7 +118,6 @@ void cluster::free(char* ptr) {
 	if (ptr == nullptr) {
 		return;
 	}
-
 	ptr -= SERV_DATA_SIZE;
 
 	my_assert(is_valid_ptr(ptr), "not valid ptr in free");
@@ -156,6 +155,9 @@ char *cluster::try_to_realloc(char *ptr, size_t new_rang_of_block) {
 	return nullptr;
 }
 
+bool cluster::is_empty() {
+	return (available_memory == (1<<RANG_OF_CLUSTERS) - (1<<RESERVED_RANG));
+}
 
 cluster *create_cluster() {
 	char *res = (char*)mmap(nullptr, 1<<RANG_OF_CLUSTERS, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -166,6 +168,11 @@ cluster *create_cluster() {
 
 	new(res)cluster();
 	return (cluster*)res;
+}
+void destroy_cluster(cluster *c) {
+	my_assert(c != nullptr, "nullptr in destroy_cluster");
+	int error = munmap(c, 1<<RANG_OF_CLUSTERS);
+	my_assert(error == 0, "error in munmup in destroy_cluster: ", errno);
 }
 
 int32_t get_num_of_pages_to_begin(char *ptr) {

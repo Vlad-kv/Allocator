@@ -21,18 +21,29 @@
 typedef unsigned long long ull;
 using namespace std;
 
-storadge_of_clusters first_stor;
-
 recursive_mutex test_mutex;
 
 atomic_bool is_initialized;
 mutex init_mutex;
 
-void initialize() {
-	first_stor.init();
-	first_stor.add_cluster(create_cluster());
+struct test_struct {
+	test_struct() {
+		print("in test_struct\n");
+	}
+	~test_struct() {
+		print("in ~test_struct\n");
+	}
+	int w = 1;
+};
+test_struct test;
 
+void initialize() {
+	print("in initialize\n");
+
+	init_global_clusters_data();
 	init_slab_allocation();
+
+	print("after initialize\n");
 }
 
 void check_init() {
@@ -44,7 +55,7 @@ void check_init() {
 	if (is_initialized.load() == true) {
 		return;
 	}
-	is_initialized = true;
+	is_initialized.store(true);
 	initialize();
 }
 
@@ -103,10 +114,18 @@ extern "C" void *malloc(size_t size) {
 	    }
 	    return malloc_original(size);
 	#else
+	    if (test.w == 0) {
+	    	return alloc_big_block(size);
+	    }
 	    check_init();
 
 		if ((size == 0) || (size > MAX_SIZE_TO_ALLOC)) {
 			return nullptr;
+		}
+
+		char *res = alloc_if_clusters_not_fully_initialaised(size);
+		if (res != nullptr) {
+			return res;
 		}
 
 		if (size <= MAX_SIZE_TO_ALLOC_IN_SLAB) {
@@ -114,7 +133,6 @@ extern "C" void *malloc(size_t size) {
 		}
 		if (size <= MAX_SIZE_TO_ALLOC_IN_CLUSTERS) {
 			char *res = alloc_block_in_cluster(size);
-			print("after malloc\n");
 			return res;
 		}
 		return alloc_big_block(size);
@@ -330,6 +348,30 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 		*memptr = res;
 		return 0;
     #endif
+}
+
+extern "C" size_t malloc_usable_size(void *ptr) {
+	lock_guard<recursive_mutex> lg(test_mutex);
+	check_init();
+
+	print("malloc_usable_size catched : \n");
+
+	if (ptr == nullptr) {
+    	return 0;
+    }
+    char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % PAGE_SIZE;
+
+    if (aligned_ptr == (char*)ptr) {
+    	return malloc_usable_size_big_block((char*)ptr);
+    }
+    int num_pages = get_num_of_pages_to_begin(aligned_ptr);
+
+    if (num_pages < 0) {
+    	return malloc_usable_size_in_cluster((char*)ptr);
+    }
+    if (num_pages >= 0) {
+    	return malloc_usable_size_in_slab((char*)ptr);
+    }
 }
 
 // LD_PRELOAD=./libAllocator.so subl

@@ -10,4 +10,6 @@ void free_big_block(char *ptr);
 
 char *realloc_big_block(char *ptr, size_t new_size);
 
+size_t malloc_usable_size_big_block(char *ptr);
+
 #endif

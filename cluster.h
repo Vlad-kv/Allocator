@@ -12,7 +12,7 @@ class cluster;
 #include "constants.h"
 
 #include "debug.h"
-#include "storadge_of_clusters.h"
+#include "storage_of_clusters.h"
 
 class cluster {
 public:
@@ -37,7 +37,7 @@ public:
 	int max_available_rang;     // если max_available_rang != old_max_available_rang, то надо перевесить
 	int old_max_available_rang; // cluster в его storadge_of_clusters
 
-	storadge_of_clusters *this_storadge_of_clusters;
+	storage_ptr this_storage_of_clusters;
 
 	static int32_t get_rang(char *ptr);
 	void set_rang(char *ptr, int32_t val);
@@ -87,6 +87,10 @@ private:
 
 	cluster();
 public:
+	bool is_necessary_to_overbalance() {
+		return (max_available_rang != old_max_available_rang);
+	}
+	bool is_empty();
 
 	char *alloc(size_t size);
 	void free(char* ptr);
@@ -103,6 +107,7 @@ static_assert(cluster::MAX_RANG <= RANG_OF_CLUSTERS, "invalid RANG_OF_CLUSTERS")
 int32_t get_num_of_pages_to_begin(char *ptr);
 
 cluster *create_cluster();
+void destroy_cluster(cluster *c);
 
 int calculate_optimal_rang(size_t size);
 

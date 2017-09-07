@@ -1,0 +1,293 @@
+292
+malloc 72704 1 
+malloc 4 2 
+calloc 1 252 3 
+calloc 1 504 4 
+calloc 1 504 5 
+calloc 1 2032 6 
+posix_memalign 1024 1008 7 
+posix_memalign 1024 1008 8 
+calloc 1 64 9 
+calloc 1 32 10 
+malloc 16384 11 
+malloc 56 12 
+malloc 64 13 
+calloc 1 64 14 
+calloc 1 32 15 
+calloc 1 96 16 
+malloc 64 17 
+calloc 1 96 18 
+calloc 1 130 19 
+malloc 32 20 
+calloc 1 96 21 
+realloc 0 8 22 
+calloc 1 16 23 
+realloc 0 16 24 
+calloc 1 64 25 
+calloc 1 96 26 
+calloc 1 16 27 
+realloc 0 16 28 
+calloc 1 76 29 
+calloc 1 256 30 
+calloc 1 256 31 
+calloc 1 128 32 
+free 13 
+free 9 
+free 10 
+calloc 1 96 33 
+calloc 1 16 34 
+realloc 0 16 35 
+calloc 1 76 36 
+calloc 1 96 37 
+calloc 1 16 38 
+realloc 0 16 39 
+calloc 1 76 40 
+calloc 1 96 41 
+calloc 1 16 42 
+realloc 0 16 43 
+calloc 1 76 44 
+calloc 1 96 45 
+calloc 1 256 46 
+calloc 1 256 47 
+calloc 1 128 48 
+free 17 
+free 14 
+free 15 
+calloc 1 16 49 
+realloc 0 16 50 
+calloc 1 76 51 
+calloc 1 96 52 
+calloc 1 16 53 
+realloc 0 16 54 
+calloc 1 76 55 
+calloc 1 96 56 
+calloc 1 16 57 
+realloc 0 16 58 
+calloc 1 76 59 
+calloc 1 96 60 
+calloc 1 16 61 
+realloc 0 16 62 
+calloc 1 76 63 
+calloc 1 96 64 
+calloc 1 16 65 
+realloc 0 16 66 
+calloc 1 76 67 
+calloc 1 96 68 
+calloc 1 16 69 
+realloc 0 16 70 
+calloc 1 76 71 
+calloc 1 96 72 
+calloc 1 16 73 
+realloc 0 16 74 
+calloc 1 76 75 
+calloc 1 96 76 
+calloc 1 16 77 
+realloc 0 16 78 
+calloc 1 76 79 
+calloc 1 96 80 
+calloc 1 16 81 
+realloc 0 16 82 
+calloc 1 76 83 
+calloc 1 96 84 
+calloc 1 16 85 
+realloc 0 16 86 
+calloc 1 76 87 
+calloc 1 96 88 
+calloc 1 16 89 
+realloc 0 16 90 
+calloc 1 132 91 
+calloc 1 96 92 
+calloc 1 16 93 
+realloc 0 16 94 
+calloc 1 132 95 
+calloc 1 96 96 
+calloc 1 16 97 
+realloc 0 16 98 
+calloc 1 90 99 
+calloc 1 96 100 
+calloc 1 16 101 
+realloc 0 16 102 
+calloc 1 148 103 
+realloc 20 32 104 
+calloc 1 96 105 
+calloc 1 16 106 
+realloc 0 16 107 
+calloc 1 148 108 
+realloc 104 64 109 
+calloc 1 184 110 
+malloc 40 111 
+calloc 1 96 112 
+realloc 0 8 113 
+calloc 1 16 114 
+realloc 0 16 115 
+calloc 1 80 116 
+malloc 40 117 
+calloc 1 96 118 
+realloc 113 16 119 
+calloc 1 16 120 
+realloc 0 16 121 
+calloc 1 80 122 
+malloc 40 123 
+calloc 1 96 124 
+realloc 119 24 125 
+calloc 1 16 126 
+realloc 0 16 127 
+calloc 1 80 128 
+malloc 40 129 
+calloc 1 96 130 
+realloc 125 32 131 
+calloc 1 16 132 
+realloc 0 16 133 
+calloc 1 80 134 
+malloc 40 135 
+calloc 1 96 136 
+realloc 131 40 137 
+calloc 1 16 138 
+realloc 0 16 139 
+calloc 1 80 140 
+calloc 1 512 141 
+calloc 1 512 142 
+calloc 1 256 143 
+free 31 
+free 30 
+free 32 
+malloc 40 144 
+calloc 1 96 145 
+realloc 137 48 146 
+calloc 1 16 147 
+realloc 0 16 148 
+calloc 1 80 149 
+malloc 40 150 
+calloc 1 96 151 
+realloc 146 56 152 
+calloc 1 16 153 
+realloc 0 16 154 
+calloc 1 80 155 
+malloc 40 156 
+calloc 1 96 157 
+realloc 152 64 158 
+calloc 1 16 159 
+realloc 0 16 160 
+calloc 1 80 161 
+malloc 40 162 
+calloc 1 96 163 
+realloc 158 72 164 
+calloc 1 512 165 
+calloc 1 512 166 
+calloc 1 256 167 
+free 47 
+free 46 
+free 48 
+calloc 1 16 168 
+realloc 0 16 169 
+calloc 1 80 170 
+malloc 40 171 
+calloc 1 96 172 
+realloc 164 80 173 
+calloc 1 16 174 
+realloc 0 16 175 
+calloc 1 80 176 
+malloc 40 177 
+calloc 1 96 178 
+realloc 173 88 179 
+calloc 1 16 180 
+realloc 0 16 181 
+calloc 1 80 182 
+malloc 40 183 
+calloc 1 96 184 
+realloc 179 96 185 
+calloc 1 16 186 
+realloc 0 16 187 
+calloc 1 80 188 
+malloc 40 189 
+calloc 1 96 190 
+realloc 185 104 191 
+calloc 1 16 192 
+realloc 0 16 193 
+calloc 1 80 194 
+malloc 40 195 
+calloc 1 96 196 
+realloc 191 112 197 
+calloc 1 16 198 
+realloc 0 16 199 
+calloc 1 80 200 
+malloc 40 201 
+calloc 1 96 202 
+realloc 197 120 203 
+calloc 1 16 204 
+realloc 0 16 205 
+calloc 1 80 206 
+malloc 40 207 
+calloc 1 96 208 
+realloc 203 128 209 
+calloc 1 16 210 
+realloc 0 16 211 
+calloc 1 80 212 
+malloc 40 213 
+calloc 1 96 214 
+realloc 209 136 215 
+calloc 1 16 216 
+realloc 0 16 217 
+calloc 1 80 218 
+malloc 40 219 
+calloc 1 96 220 
+realloc 215 144 221 
+calloc 1 16 222 
+realloc 0 16 223 
+calloc 1 80 224 
+posix_memalign 256 240 225 
+posix_memalign 256 240 226 
+posix_memalign 256 240 227 
+posix_memalign 256 240 228 
+calloc 1 96 229 
+realloc 0 8 230 
+calloc 1 16 231 
+realloc 0 16 232 
+calloc 1 92 233 
+malloc 40 234 
+calloc 1 96 235 
+realloc 221 152 236 
+calloc 1 16 237 
+realloc 0 16 238 
+calloc 1 80 239 
+malloc 40 240 
+calloc 1 96 241 
+realloc 236 160 242 
+calloc 1 16 243 
+realloc 0 16 244 
+calloc 1 80 245 
+malloc 40 246 
+calloc 1 96 247 
+realloc 242 168 248 
+calloc 1 16 249 
+realloc 0 16 250 
+calloc 1 80 251 
+calloc 1 96 252 
+realloc 0 8 253 
+calloc 1 16 254 
+realloc 0 16 255 
+calloc 1 8 256 
+malloc 40 257 
+calloc 1 96 258 
+realloc 248 176 259 
+calloc 1 16 260 
+realloc 0 16 261 
+calloc 1 80 262 
+malloc 40 263 
+calloc 1 96 264 
+realloc 259 184 265 
+calloc 1 16 266 
+realloc 0 16 267 
+calloc 1 80 268 
+realloc 109 128 269 
+realloc 269 256 270 
+realloc 270 512 271 
+realloc 271 1024 272 
+realloc 272 2048 273 
+realloc 273 4096 274 
+calloc 1 64 275 
+calloc 1 32 276 
+malloc 32 277 
+realloc 0 8 278 
+calloc 1 64 279 
+calloc 1 32 280 

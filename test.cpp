@@ -12,6 +12,8 @@
 #include <errno.h>
 
 #include <fstream>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -247,19 +249,31 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
 	}
 }
 
+void test_f() {
+	char *c;
+	this_thread::sleep_for(chrono::milliseconds(100));
+
+	c = new char[100];
+	this_thread::sleep_for(chrono::milliseconds(100));
+	
+	// delete []c;
+	this_thread::sleep_for(chrono::milliseconds(100));
+}
+
 int main(int argc, char *argv[]) {
-	/*
 	malloc_original = (void* (*)(size_t size))malloc(-1);
 	free_original = (void (*)(void *ptr))malloc(-2);
 	calloc_original = (void* (*)(size_t, size_t))malloc(-3);
 	realloc_original = (void* (*)(void *, size_t))malloc(-4);
 	posix_memalign_original = (int (*)(void **memptr, size_t alignment, size_t size))malloc(-5);
 
-	srand(5);
+	// srand(5);
 
-	test(30, 40, 30, 60, 20, 50);*/
+	// test(30, 40, 30, 60, 20, 50);
 
-	system("subl");
+	// thread t_1(test_f), t_2(test_f);
 
+	// t_1.join();
+	// t_2.join();
 	return 0;
 }
