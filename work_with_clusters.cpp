@@ -91,7 +91,7 @@ cluster* get_empty_cluster() {
 	return res;
 }
 void return_empty_cluster(cluster *c) {
-	my_assert(c != nullptr, "nullptr in return_empty_cluster");
+	my_assert(c != nullptr, "nullptr in return_empty_cluster\n");
 	lock_guard<mutex> lg(empty_sorage_mutex);
 
 	if (number_of_empty_clusters == MAX_NUMBER_OF_EMPTY_CLUSTERS) {
@@ -106,8 +106,16 @@ void on_thread_exit(void *v_data) {
 	thread_data *data = (thread_data*)v_data;
 	print("in on_thread_exit\n");
 
+	if (data == nullptr) {
+		fatal_error("nullptr in data (on_thread_exit)\n");
+	}
+
 	lock_guard<mutex> lg(storage_of_clusters_without_owners_mutex);
 	unique_lock<recursive_mutex> ul(data->local_storage_ptr->storage_mutex);
+
+	if (storage_of_clusters_without_owners_ptr.ptr == nullptr) {
+		fatal_error("nullptr in storage_of_clusters_without_owners_ptr (on_thread_exit)\n");
+	}
 
 	for (int w = CLUSTER_MIN_RANG - 1; w <= CLUSTER_MAX_RANG; w++) {
 		while (true) {
@@ -116,10 +124,6 @@ void on_thread_exit(void *v_data) {
 				break;
 			}
 			data->local_storage_ptr->cut(c, w);
-
-			if (storage_of_clusters_without_owners_ptr.ptr == nullptr) {
-				fatal_error("nullptr in storage_of_clusters_without_owners_ptr");
-			}
 
 			storage_of_clusters_without_owners_ptr->add_cluster(c);
 		}
@@ -132,11 +136,12 @@ void on_thread_exit(void *v_data) {
 }
 
 void init_thread_local_cluster_data() {
-	// print("in init_thread_local_cluster_data\n");
 	if (data != nullptr) {
 		// print("after init_thread_local_cluster_data (already init)\n\n");
 		return;
 	}
+	// print("in init_thread_local_cluster_data\n");
+	
 	char *ptr = (char*)mmap(nullptr, 1<<RANG_OF_CLUSTERS, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	my_assert(ptr != MAP_FAILED, "mmap failed (in init_thread_local_cluster_data) with error : ", errno);
 
@@ -284,5 +289,6 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 }
 
 size_t malloc_usable_size_in_cluster(char *ptr) {
-	return (1 << cluster::get_rang(ptr)) - CLUSTER_SERV_DATA_SIZE;
+	ptr -= CLUSTER_SERV_DATA_SIZE;
+	return (1 << (-cluster::get_rang(ptr))) - CLUSTER_SERV_DATA_SIZE;
 }

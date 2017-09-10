@@ -14,7 +14,7 @@ public:
 	static storage_ptr create();
 
 	storage_ptr();
-	storage_ptr(storage_ptr& st_ptr);
+	storage_ptr(const storage_ptr& st_ptr);
 	storage_ptr& operator=(const storage_ptr& st_ptr);
 
 	storage_of_clusters* operator->();

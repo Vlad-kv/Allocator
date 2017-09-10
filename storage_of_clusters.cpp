@@ -105,13 +105,16 @@ storage_ptr storage_ptr::create() {
 	res->init();
 
 	res.set_use_count(1);
+
+	my_assert(res.ptr != nullptr, "Erorr - nullptr in storage_ptr::create\n");
+
 	return res;
 }
 
 storage_ptr::storage_ptr()
 : ptr(nullptr) {
 }
-storage_ptr::storage_ptr(storage_ptr& st_ptr)
+storage_ptr::storage_ptr(const storage_ptr& st_ptr)
 : ptr(st_ptr.ptr) {
 	if (ptr != nullptr) {
 		inc_use_count();

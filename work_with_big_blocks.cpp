@@ -28,8 +28,8 @@ char *alloc_big_block(size_t size) {
 void free_big_block(char *ptr) {
 	char *block = *(char**)(ptr - 3 * sizeof(char*));
 	size_t size = *(size_t*)(ptr - 2 * sizeof(char*));
-	int error = munmap(block, size);
 
+	int error = munmap(block, size);
 	my_assert(error == 0, "error in munmup in free_big_block: ", errno);
 }
 
@@ -72,5 +72,7 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 }
 
 size_t malloc_usable_size_big_block(char *ptr) {
-	return *(size_t*)(ptr - 2 * sizeof(char*));
+	char *block = *(char**)(ptr - 3 * sizeof(char*));
+	size_t size = *(size_t*)(ptr - 2 * sizeof(char*));
+	return size - (ptr - block);
 }

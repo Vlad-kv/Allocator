@@ -23,11 +23,19 @@ using namespace std;
 
 recursive_mutex test_mutex;
 
+extern std::atomic_int num_alive_writers;
+
 atomic_bool is_initialized;
+atomic_bool is_constructors_begin_to_executing;
 mutex init_mutex;
 
 struct test_struct {
 	test_struct() {
+		atomic_init<int>(&num_alive_writers, 0);
+
+		is_constructors_begin_to_executing.store(true);
+		is_initialized.store(false);
+
 		print("in test_struct\n");
 	}
 	~test_struct() {
@@ -77,6 +85,9 @@ extern "C" void *malloc(size_t size) {
 
 	if (num_alive_writers > 0) {
 		// WRITE("  malloc for print\n");
+		while ((ull)(buffer_for_print + buffer_pos) % 8 != 0) {
+			buffer_pos++;
+		}
 		char* res = buffer_for_print + buffer_pos;
 		buffer_pos += size;
 		if (buffer_pos > BUFFER_FOR_PRINT_SIZE) {
@@ -86,7 +97,7 @@ extern "C" void *malloc(size_t size) {
 		return res;
 	}
 
-	if (size == (size_t)-1) {               // debug
+	if (size == (size_t)-1) {   // debug
 		return dlsym(RTLD_NEXT, "malloc");
 	}
 	if (size == (size_t)-2) {
@@ -114,11 +125,12 @@ extern "C" void *malloc(size_t size) {
 	    }
 	    return malloc_original(size);
 	#else
-	    if (test.w == 0) {
-	    	return alloc_big_block(size);
+	    if (is_constructors_begin_to_executing.load() == false) {
+	    	char *res = alloc_big_block(size);
+	    	return res;
 	    }
 	    check_init();
-
+	    
 		if ((size == 0) || (size > MAX_SIZE_TO_ALLOC)) {
 			return nullptr;
 		}
@@ -129,13 +141,15 @@ extern "C" void *malloc(size_t size) {
 		}
 
 		if (size <= MAX_SIZE_TO_ALLOC_IN_SLAB) {
-			return alloc_block_in_slab(size);
+			char *res = alloc_block_in_slab(size);
+			return res;
 		}
 		if (size <= MAX_SIZE_TO_ALLOC_IN_CLUSTERS) {
 			char *res = alloc_block_in_cluster(size);
 			return res;
 		}
-		return alloc_big_block(size);
+		res = alloc_big_block(size);
+		return res;
 	#endif
 }
 
@@ -162,7 +176,6 @@ extern "C" void free(void *ptr) {
 	    }
 	#else
 	    check_init();
-
 	    if (ptr == nullptr) {
 	    	return;
 	    }
@@ -176,8 +189,7 @@ extern "C" void free(void *ptr) {
 
 	    if (num_pages < 0) {
 	    	free_block_in_clster((char*)ptr);
-	    }
-	    if (num_pages >= 0) {
+	    } else {
 	    	free_block_in_slab((char*)ptr);
 	    }
     #endif
@@ -300,6 +312,9 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 	    return posix_memalign_original(memptr, alignment, size);
 	#else
 	    check_init();
+	    if (alignment < 8) {
+	    	alignment = 8;
+	    }
 	    if (alignment == 8) {
 	    	void* res = malloc(size);
 	    	if (res == nullptr) {
@@ -372,6 +387,39 @@ extern "C" size_t malloc_usable_size(void *ptr) {
     if (num_pages >= 0) {
     	return malloc_usable_size_in_slab((char*)ptr);
     }
+}
+
+///////////////////////////////////////////////////////////////////
+
+extern "C" void *aligned_alloc(size_t alignment, size_t size) {
+	fatal_error("aligned_alloc not implemented");
+}
+extern "C" void *valloc(size_t size) {
+	fatal_error("valloc not implemented");
+}
+extern "C" void *memalign(size_t alignment, size_t size) {
+	fatal_error("memalign not implemented");
+}
+extern "C" void *pvalloc(size_t size) {
+	fatal_error("pvalloc not implemented");
+}
+extern "C" int mallopt(int param, int value) {
+	fatal_error("mallopt not implemented");
+}
+extern "C" int malloc_trim(size_t pad) {
+	fatal_error("malloc_trim not implemented");
+}
+extern "C" void* malloc_get_state(void) {
+	fatal_error("malloc_get_state not implemented");
+}
+extern "C" int malloc_set_state(void *state) {
+	fatal_error("malloc_set_state not implemented");
+}
+extern "C" int malloc_info(int options, FILE *stream) {
+	fatal_error("malloc_info not implemented");
+}
+extern "C" void malloc_stats(void) {
+	fatal_error("malloc_info not implemented");
 }
 
 // LD_PRELOAD=./libAllocator.so subl

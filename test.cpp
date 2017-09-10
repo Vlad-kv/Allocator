@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <cassert>
 
+#include <malloc.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -175,6 +177,12 @@ void make_realloc() {
 
 void big_check() {
 	for (int w = 0; w < a_size; w++) {
+		int calc_size = malloc_usable_size(a_my[w]);
+		if (calc_size < alloc_size[w]) {
+			cout << "error in big_check : expected size ";
+			cout << alloc_size[w] << ", found " << calc_size << "\n";
+			exit(1);
+		}
 		for (int e = 0; e < alloc_size[w]; e++) {
 			if (a_orig[w][e] != a_my[w][e]) {
 				cout << (long long)(a_orig[w] + e) << " " << (long long)(a_my[w] + e) << "\n";
@@ -187,7 +195,7 @@ void big_check() {
 	}
 }
 
-const int STEP = 10;
+const int STEP = 1;
 
 void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
 		int num_modifications, int num_posix_memaligns) {
@@ -197,7 +205,7 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
 	num_modifications += num_free;
 	num_posix_memaligns += num_modifications;
 
-	for (int w = 0; w < 100000; w++) {
+	for (int w = 0; w < 100; w++) {
 		if ((w != 0) && (w % STEP == 0)) {
 			cout << "Performed " << w << " operations ";
 			big_check();
@@ -267,9 +275,9 @@ int main(int argc, char *argv[]) {
 	realloc_original = (void* (*)(void *, size_t))malloc(-4);
 	posix_memalign_original = (int (*)(void **memptr, size_t alignment, size_t size))malloc(-5);
 
-	// srand(5);
+	srand(0); // 0 (5)
 
-	// test(30, 40, 30, 60, 20, 50);
+	test(30, 40, 30, 60, 20, 50);
 
 	// thread t_1(test_f), t_2(test_f);
 

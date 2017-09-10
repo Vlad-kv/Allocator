@@ -7,6 +7,10 @@ simple_start_gitk: libAllocatorSimple.so
 	rm -f log_simple.txt
 	LD_PRELOAD=./libAllocatorSimple.so gitk
 
+start_g++: libAllocator.so
+	rm -f log.txt
+	LD_PRELOAD=./libAllocator.so g++ -o test.exe test.cpp -std=c++11 -ldl -lpthread
+
 start_gitk: libAllocator.so
 	rm -f log.txt
 	LD_PRELOAD=./libAllocator.so gitk
@@ -14,6 +18,10 @@ start_gitk: libAllocator.so
 start_subl: libAllocator.so
 	rm -f log.txt
 	LD_PRELOAD=./libAllocator.so subl
+
+start_nano: libAllocator.so
+	rm -f log.txt
+	LD_PRELOAD=./libAllocator.so nano
 
 execute: libAllocator.so test.exe
 	rm -f log.txt

@@ -1,20 +1,21 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-// #define REMOVE_TEXT
+#define REMOVE_TEXT
 // #define WRITE_TO_CONSOLE
 
 #include <mutex>
 #include <cstring>
 #include <fstream>
 #include <unistd.h>
+#include <atomic>
 
 extern std::recursive_mutex debug_mutex;
 
 extern const int BUFFER_FOR_PRINT_SIZE;
 extern char buffer_for_print[];
 extern int buffer_pos;
-extern int num_alive_writers;
+extern std::atomic_int num_alive_writers;
 
 
 #ifndef WRITE_TO_CONSOLE
@@ -81,7 +82,7 @@ void print(const Args &...args) {
 
 		num_alive_writers++;
 		#ifndef WRITE_TO_CONSOLE
-			std::ofstream out("log.txt", std::ios_base::app);
+			std::ofstream out("/home/vlad-kv/My_Creations/Allocator/log.txt", std::ios_base::app);
 			lok_print(out, args...);
 			out.close();
 
