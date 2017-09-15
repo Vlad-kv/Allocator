@@ -1,6 +1,8 @@
 #ifndef STORAGE_OF_CLUSTERS_H
 #define STORAGE_OF_CLUSTERS_H
 
+#include <atomic>
+
 class storage_of_clusters;
 
 class storage_ptr {
@@ -26,7 +28,7 @@ public:
 	void set_use_count(long long val);
 	void inc_use_count();
 
-	storage_of_clusters* ptr;
+	std::atomic<storage_of_clusters*> atom_ptr;
 };
 
 #include "constants.h"
@@ -51,18 +53,18 @@ public:
 
 	void overbalance(cluster *c); // только с блокировкой на storage_mutex и cluster_mutex!
 
-	void init();
+	void init(); // только с блокировкой на storage_mutex
 
 	char *get_block(size_t rang); // берёт storage_mutex
 
 	void add_cluster(cluster *c); // берёт storage_mutex и cluster_mutex
 
 	storage_of_clusters() {
-		print("in storage_of_clusters\n");
+		// print("in storage_of_clusters\n");
 	}
 
 	~storage_of_clusters() {
-		print("in ~storage_of_clusters\n");
+		// print("in ~storage_of_clusters\n");
 	}
 };
 

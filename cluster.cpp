@@ -1,13 +1,17 @@
 #include "cluster.h"
 
+#include <atomic>
+
+using namespace std;
 typedef unsigned long long ull;
 
 int32_t cluster::get_rang(char *ptr) {
-	return *(int32_t*)ptr;
+	return *atomic<int32_t*>((int32_t*)ptr);
 }
 void cluster::set_rang(char *ptr, int32_t val) {
-	*(int32_t*)ptr = val;
-	*(int32_t*)(ptr + sizeof(int32_t)) = -(ptr - storage) / PAGE_SIZE - 1;
+	*atomic<int32_t*>((int32_t*)ptr) = val;
+	atomic<int32_t*> atom_ptr((int32_t*)(ptr + sizeof(int32_t)));
+	*atom_ptr = -(ptr - storage) / PAGE_SIZE - 1;
 }
 char* cluster::get_prev(char *ptr) {
 	return *(char**)(ptr + sizeof(void*));
@@ -176,7 +180,8 @@ void destroy_cluster(cluster *c) {
 }
 
 int32_t get_num_of_pages_to_begin(char *ptr) {
-	return *(int32_t*)(ptr + sizeof(int32_t));
+	atomic<int32_t*> atom_ptr((int32_t*)(ptr + sizeof(int32_t)));
+	return *atom_ptr;
 }
 
 int calculate_optimal_rang(size_t size) {

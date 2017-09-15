@@ -50,7 +50,7 @@ void init_global_clusters_data() {
 
 	storage_of_clusters_without_owners_ptr = storage_ptr::create();
 
-	if (storage_of_clusters_without_owners_ptr.ptr == nullptr) {
+	if (storage_of_clusters_without_owners_ptr.atom_ptr.load() == nullptr) {
 		fatal_error("nullptr in storage_of_clusters_without_owners_ptr (in init_global_clusters_data)");
 	}
 
@@ -113,7 +113,7 @@ void on_thread_exit(void *v_data) {
 	lock_guard<mutex> lg(storage_of_clusters_without_owners_mutex);
 	unique_lock<recursive_mutex> ul(data->local_storage_ptr->storage_mutex);
 
-	if (storage_of_clusters_without_owners_ptr.ptr == nullptr) {
+	if (storage_of_clusters_without_owners_ptr.atom_ptr.load() == nullptr) {
 		fatal_error("nullptr in storage_of_clusters_without_owners_ptr (on_thread_exit)\n");
 	}
 
@@ -140,7 +140,8 @@ void init_thread_local_cluster_data() {
 		// print("after init_thread_local_cluster_data (already init)\n\n");
 		return;
 	}
-	// print("in init_thread_local_cluster_data\n");
+	
+	print("in init_thread_local_cluster_data\n");
 	
 	char *ptr = (char*)mmap(nullptr, 1<<RANG_OF_CLUSTERS, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	my_assert(ptr != MAP_FAILED, "mmap failed (in init_thread_local_cluster_data) with error : ", errno);
@@ -156,7 +157,7 @@ void init_thread_local_cluster_data() {
 	if (res != 0) {
 		fatal_error("pthread_setspecific failed with error : ", res);
 	}
-	data->local_storage_ptr.ptr = (storage_of_clusters*)ptr;
+	data->local_storage_ptr.atom_ptr = (storage_of_clusters*)ptr;
 	data->use_count++;
 
 	data->is_it_fully_initialaised = true;
@@ -170,9 +171,11 @@ char *add_free_cluster_and_get_block(int rang) {
 	if (new_cluster == nullptr) {
 		return nullptr;
 	}
-	lock_guard<recursive_mutex> lg(new_cluster->cluster_mutex);
-
-	char *res = new_cluster->alloc(rang);
+	char *res;
+	{
+		lock_guard<recursive_mutex> lg(new_cluster->cluster_mutex);
+		res = new_cluster->alloc(rang);
+	}
 	data->local_storage_ptr->add_cluster(new_cluster);
 	return res;
 }
@@ -245,7 +248,7 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 	size_t old_size = (1<<-cluster::get_rang(ptr - cluster::SERV_DATA_SIZE)) - cluster::SERV_DATA_SIZE;
 	cluster *c = get_begin_of_cluster(ptr);
 
-	unique_lock<recursive_mutex> u_lock(c->cluster_mutex);
+	unique_lock<recursive_mutex> u_lock((*atomic<cluster*>(c)).cluster_mutex);
 
 	if (new_size <= MAX_SIZE_TO_ALLOC_IN_SLAB) {
 		char *res = alloc_block_in_slab(new_size);

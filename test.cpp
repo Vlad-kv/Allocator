@@ -6,12 +6,17 @@
 #include <unistd.h>
 #include <cassert>
 
+#include <vector>
+
 #include <malloc.h>
+#include <atomic>
+#include <mutex>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <regex.h>
 
 #include <fstream>
 #include <chrono>
@@ -21,18 +26,18 @@ using namespace std;
 
 typedef unsigned long long ull;
 
-static void* (*malloc_original)(size_t size) = nullptr;
-static void (*free_original)(void *ptr) = nullptr;
-static void* (*calloc_original)(size_t nmemb, size_t size) = nullptr;
-static void* (*realloc_original)(void *ptr, size_t size) = nullptr;
-static int (*posix_memalign_original)(void **memptr, size_t alignment, size_t size) = nullptr;
+static atomic<void* (*)(size_t size)> malloc_original;
+static atomic<void (*)(void *ptr)> free_original;
+static atomic<void* (*)(size_t nmemb, size_t size)> calloc_original;
+static atomic<void* (*)(void *ptr, size_t size)> realloc_original;
+static atomic<int (*)(void **memptr, size_t alignment, size_t size)> posix_memalign_original;
 
-const int MAX_SUMM_MEMORY = 2000000;
+const int MAX_SUMM_MEMORY = 50000;
 const int MAX_SIZE = 4000;
 const int NUM_TO_FREE_IN_BIG_FREE = 200;
 
-const int MIN_SIZE_TO_ALLOC = 40;
-const int MAX_SIZE_TO_ALLOC = 100000;
+const int MIN_SIZE_TO_ALLOC = 10;
+const int MAX_SIZE_TO_ALLOC = 8000;
 
 const int MIN_MEMALIGN = 3, MAX_MEMALIGN = 15;
 
@@ -42,12 +47,14 @@ size_t get_size() {
 	return MIN_SIZE_TO_ALLOC + rand() % (MAX_SIZE_TO_ALLOC - MIN_SIZE_TO_ALLOC + 1);
 }
 
-int summ_memory = 0;
+mutex write_mutex;
 
-char *a_orig[MAX_SIZE];
-char *a_my[MAX_SIZE];
-int alloc_size[MAX_SIZE];
-int a_size = 0;
+thread_local int summ_memory = 0;
+
+thread_local char *a_orig[MAX_SIZE];
+thread_local char *a_my[MAX_SIZE];
+thread_local int alloc_size[MAX_SIZE];
+thread_local int a_size = 0;
 
 void make_free(size_t pos) {
 	free_original(a_orig[pos]);
@@ -205,11 +212,17 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
 	num_modifications += num_free;
 	num_posix_memaligns += num_modifications;
 
-	for (int w = 0; w < 100; w++) {
+	for (int w = 0; w < 1000; w++) {
 		if ((w != 0) && (w % STEP == 0)) {
-			cout << "Performed " << w << " operations ";
+			{
+				lock_guard<mutex> lg(write_mutex);
+				cout << "Performed " << w << " operations ";
+			}
 			big_check();
-			cout << "big_check perfomed\n";
+			{
+				lock_guard<mutex> lg(write_mutex);
+				cout << "big_check perfomed\n";
+			}
 		}
 
 		int c = rand() % num_posix_memaligns;
@@ -258,14 +271,7 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
 }
 
 void test_f() {
-	char *c;
-	this_thread::sleep_for(chrono::milliseconds(100));
-
-	c = new char[100];
-	this_thread::sleep_for(chrono::milliseconds(100));
-	
-	// delete []c;
-	this_thread::sleep_for(chrono::milliseconds(100));
+	test(30, 40, 30, 60, 20, 50);
 }
 
 int main(int argc, char *argv[]) {
@@ -277,11 +283,9 @@ int main(int argc, char *argv[]) {
 
 	srand(0); // 0 (5)
 
-	test(30, 40, 30, 60, 20, 50);
+	thread t_1(test_f), t_2(test_f);
 
-	// thread t_1(test_f), t_2(test_f);
-
-	// t_1.join();
-	// t_2.join();
+	t_1.join();
+	t_2.join();
 	return 0;
 }

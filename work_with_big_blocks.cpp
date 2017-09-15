@@ -4,9 +4,11 @@
 
 #include <sys/mman.h>
 #include <errno.h>
+#include <atomic>
 
 #include "constants.h"
 #include "debug.h"
+using namespace std;
 
 char *alloc_big_block(size_t size) {
 	size = size + (PAGE_SIZE - size % PAGE_SIZE) % PAGE_SIZE + PAGE_SIZE;
@@ -14,20 +16,20 @@ char *alloc_big_block(size_t size) {
 	char *block = (char*)mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 	if (block == MAP_FAILED) {
-		print("MAP_FAILED in alloc_big_block\n");
+		// print("MAP_FAILED in alloc_big_block\n");
 		return nullptr;
 	}
 	char *res = block + PAGE_SIZE;
 
-	*(char**)(res - 3 * sizeof(char*)) = block;
-	*(size_t*)(res - 2 * sizeof(char*)) = size;
+	*(atomic<char**>)(char**)(res - 3 * sizeof(char*)) = block;
+	*(atomic<size_t*>)(size_t*)(res - 2 * sizeof(char*)) = size;
 	
 	return res;
 }
 
 void free_big_block(char *ptr) {
-	char *block = *(char**)(ptr - 3 * sizeof(char*));
-	size_t size = *(size_t*)(ptr - 2 * sizeof(char*));
+	char *block = *(atomic<char**>)(char**)(ptr - 3 * sizeof(char*));
+	size_t size = *(atomic<size_t*>)(size_t*)(ptr - 2 * sizeof(char*));
 
 	int error = munmap(block, size);
 	my_assert(error == 0, "error in munmup in free_big_block: ", errno);
@@ -72,7 +74,7 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 }
 
 size_t malloc_usable_size_big_block(char *ptr) {
-	char *block = *(char**)(ptr - 3 * sizeof(char*));
-	size_t size = *(size_t*)(ptr - 2 * sizeof(char*));
+	char *block = *(atomic<char**>)(char**)(ptr - 3 * sizeof(char*));
+	size_t size = *(atomic<size_t*>)(size_t*)(ptr - 2 * sizeof(char*));
 	return size - (ptr - block);
 }
