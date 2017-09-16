@@ -2,19 +2,16 @@
 
 using namespace std;
 
-void storage_of_clusters::cut(cluster *c, int rang) { // только с блокировкой на storage_mutex и cluster_mutex!
+void storage_of_clusters::cut(cluster *c, int rang) { // только с блокировкой на storage_mutex!
 	cluster *prev = c->prev_cluster;
 	cluster *next = c->next_cluster;
 
 	if (prev == nullptr) {
 		clusters[rang] = next;
 	} else {
-		lock_guard<recursive_mutex> lg(prev->cluster_mutex);
 		prev->next_cluster = next;
 	}
-
 	if (next != nullptr) {
-		lock_guard<recursive_mutex> lg(next->cluster_mutex);
 		next->prev_cluster = prev;
 	}
 }
@@ -27,17 +24,19 @@ void storage_of_clusters::overbalance(cluster *c) { // только с блок�
 	}
 }
 
-void storage_of_clusters::add_to_begin(cluster *c, int rang) { // только с блокировкой на storage_mutex и cluster_mutex!
+void storage_of_clusters::add_to_begin(cluster *c, int rang) { // только с блокировкой на storage_mutex!
 	cluster *next = clusters[rang];
 	{
 		storage_ptr s_ptr;
 		s_ptr.atom_ptr.store(this);
-		s_ptr.inc_use_count();
+		{
+			lock_guard<mutex> lg(counter_mutex);
+			s_ptr.inc_use_count();
+		}
 
 		c->this_storage_of_clusters = s_ptr;
 	}
 	if (next != nullptr) {
-		lock_guard<recursive_mutex> lg(next->cluster_mutex);
 		next->prev_cluster = c;
 	}
 	c->next_cluster = next;
@@ -100,11 +99,13 @@ storage_ptr storage_ptr::create() {
 
 	new(res.atom_ptr.load())storage_of_clusters();
 
-	std::lock_guard<std::recursive_mutex> lg(res->storage_mutex);
+	lock_guard<recursive_mutex> lg(res->storage_mutex);
 
 	res->init();
-
-	res.set_use_count(1);
+	{
+		lock_guard<mutex> lg_2(res->counter_mutex);
+		res.set_use_count(1);
+	}
 
 	my_assert(res.atom_ptr.load() != nullptr, "Erorr - nullptr in storage_ptr::create\n");
 
@@ -117,6 +118,7 @@ storage_ptr::storage_ptr()
 storage_ptr::storage_ptr(const storage_ptr& st_ptr)
 : atom_ptr(st_ptr.atom_ptr.load()) {
 	if (atom_ptr.load() != nullptr) {
+		lock_guard<mutex> lg(atom_ptr.load()->counter_mutex);
 		inc_use_count();
 	}
 }
@@ -124,6 +126,7 @@ storage_ptr& storage_ptr::operator=(const storage_ptr& st_ptr) {
 	release_ptr();
 	atom_ptr.store(st_ptr.atom_ptr.load());
 	if (atom_ptr.load() != nullptr) {
+		lock_guard<mutex> lg(atom_ptr.load()->counter_mutex);
 		inc_use_count();
 	}
 }
@@ -132,16 +135,20 @@ storage_ptr::~storage_ptr() {
 	release_ptr();
 }
 storage_of_clusters* storage_ptr::operator->() {
-	return atom_ptr.load();
+	storage_of_clusters* ptr = atom_ptr.load();
+	my_assert(ptr != nullptr, "nullptr in storage_ptr::operator->");
+	return ptr;
 }
 void storage_ptr::release_ptr() {
 	if (atom_ptr.load() == nullptr) {
 		return;
 	}
-	atom_ptr.load()->storage_mutex.lock(); // TODO!!
-	int count = get_use_count() - 1;
-	set_use_count(count);
-	atom_ptr.load()->storage_mutex.unlock();
+	int count;
+	{
+		lock_guard<mutex> lg(atom_ptr.load()->counter_mutex);
+		count = get_use_count() - 1;
+		set_use_count(count);
+	}
 
 	storage_of_clusters* old_ptr = atom_ptr.load();
 	atom_ptr.store(nullptr);
@@ -154,10 +161,10 @@ void storage_ptr::release_ptr() {
 }
 
 long long storage_ptr::get_use_count() {
-	return *((long long*)(((char*)atom_ptr.load()) + sizeof(storage_of_clusters)));
+	return atom_ptr.load()->counter;
 }
 void storage_ptr::set_use_count(long long val) {
-	*((long long*)(((char*)atom_ptr.load()) + sizeof(storage_of_clusters))) = val;
+	atom_ptr.load()->counter = val;
 }
 void storage_ptr::inc_use_count() {
 	set_use_count(get_use_count() + 1);

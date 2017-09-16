@@ -16,6 +16,11 @@ start_gitk: libAllocator.so
 	rm -f log.txt
 	LD_PRELOAD=./libAllocator.so gitk
 
+start_gitk_under_valgrind: libAllocator.so
+	rm -f log.txt
+	rm -f log_3.txt
+	valgrind --tool=memcheck --trace-children=yes --log-file=log_3.txt env LD_PRELOAD=./libAllocator.so gitk
+
 start_subl: libAllocator.so
 	rm -f log.txt
 	LD_PRELOAD=./libAllocator.so subl
@@ -35,8 +40,7 @@ start_valgrind: libAllocator.so test.exe
 
 execute: libAllocator.so test.exe
 	rm -f log.txt
-	rm -f log_3.txt
-	env LD_PRELOAD=./libAllocator.so ./test.exe > log_3.txt
+	env LD_PRELOAD=./libAllocator.so ./test.exe
 
 test.exe: test.cpp
 	g++ -g -O0 -o test.exe test.cpp -std=c++11 -ldl -lpthread

@@ -6,12 +6,11 @@ using namespace std;
 typedef unsigned long long ull;
 
 int32_t cluster::get_rang(char *ptr) {
-	return *atomic<int32_t*>((int32_t*)ptr);
+	return (*(atomic<int32_t>*)(ptr)).load();
 }
 void cluster::set_rang(char *ptr, int32_t val) {
-	*atomic<int32_t*>((int32_t*)ptr) = val;
-	atomic<int32_t*> atom_ptr((int32_t*)(ptr + sizeof(int32_t)));
-	*atom_ptr = -(ptr - storage) / PAGE_SIZE - 1;
+	(*(atomic<int32_t>*)(ptr)).store(val);
+	(*(atomic<int32_t>*)(ptr + sizeof(int32_t))).store(-(ptr - storage) / PAGE_SIZE - 1);
 }
 char* cluster::get_prev(char *ptr) {
 	return *(char**)(ptr + sizeof(void*));
@@ -69,6 +68,8 @@ char* cluster::split(char* block, ll neded_level) {
 cluster::cluster() 
 : storage((char*)this) {
 	print(" In constructor \n        ##########\n        ##########\n        ##########\n\n");
+
+	lock_guard<recursive_mutex> lg(cluster_mutex);
 
 	max_available_rang = MAX_RANG;
 
@@ -180,8 +181,7 @@ void destroy_cluster(cluster *c) {
 }
 
 int32_t get_num_of_pages_to_begin(char *ptr) {
-	atomic<int32_t*> atom_ptr((int32_t*)(ptr + sizeof(int32_t)));
-	return *atom_ptr;
+	return (*(atomic<int32_t>*)(ptr + sizeof(int32_t))).load();
 }
 
 int calculate_optimal_rang(size_t size) {

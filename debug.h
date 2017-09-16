@@ -2,7 +2,7 @@
 #define DEBUG_H
 
 #define REMOVE_TEXT
-// #define WRITE_TO_CONSOLE
+#define WRITE_TO_CONSOLE
 
 #define WRITE(str) {\
 	int res = write(1, str, strlen(str));\

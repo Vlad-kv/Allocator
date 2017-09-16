@@ -19,7 +19,6 @@ const int BUFFER_TO_LOCAL_KEY_SIZE = 64;
 
 struct thread_data {
 	storage_of_clusters local_storage;
-	long long use_count;
 
 	bool is_it_fully_initialaised = false;
 	pthread_key_t local_key;
@@ -109,7 +108,6 @@ void on_thread_exit(void *v_data) {
 	if (data == nullptr) {
 		fatal_error("nullptr in data (on_thread_exit)\n");
 	}
-
 	lock_guard<mutex> lg(storage_of_clusters_without_owners_mutex);
 	unique_lock<recursive_mutex> ul(data->local_storage_ptr->storage_mutex);
 
@@ -158,10 +156,10 @@ void init_thread_local_cluster_data() {
 		fatal_error("pthread_setspecific failed with error : ", res);
 	}
 	data->local_storage_ptr.atom_ptr = (storage_of_clusters*)ptr;
-	data->use_count++;
+	data->local_storage_ptr.inc_use_count();
 
 	data->is_it_fully_initialaised = true;
-	// print("after init_thread_local_cluster_data (initialaised)\n\n");
+	print("after init_thread_local_cluster_data (initialaised)\n\n");
 }
 
 char *add_free_cluster_and_get_block(int rang) {
@@ -220,12 +218,15 @@ void free_block_in_clster(char *ptr) {
     	if (c->this_storage_of_clusters != s_ptr) {
     		return;
     	}
-    	lock_guard<recursive_mutex> lg_2(c->cluster_mutex);
+    	unique_lock<recursive_mutex> un_lock(c->cluster_mutex);
     	if (c->is_empty()) {
     		s_ptr->cut(c, c->old_max_available_rang);
     		c->old_max_available_rang = c->max_available_rang;
 
     		c->this_storage_of_clusters.release_ptr();
+
+    		un_lock.unlock();
+    		un_lock.release();
 
     		return_empty_cluster(c);
     		return;
@@ -248,7 +249,7 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 	size_t old_size = (1<<-cluster::get_rang(ptr - cluster::SERV_DATA_SIZE)) - cluster::SERV_DATA_SIZE;
 	cluster *c = get_begin_of_cluster(ptr);
 
-	unique_lock<recursive_mutex> u_lock((*atomic<cluster*>(c)).cluster_mutex);
+	unique_lock<recursive_mutex> u_lock(c->cluster_mutex);
 
 	if (new_size <= MAX_SIZE_TO_ALLOC_IN_SLAB) {
 		char *res = alloc_block_in_slab(new_size);

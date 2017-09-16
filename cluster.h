@@ -30,8 +30,12 @@ private:
 	char* levels[MAX_RANG + 1];
 	ll available_memory = 0;
 public:
-
+	/*
+		Изменения prev_cluster и next_cluster происходят в рамках соответствующего storage_mutex-а, либо,
+	когда cluster пустой, в рамках empty_sorage_mutex.
+	*/
 	cluster *prev_cluster, *next_cluster;
+
 	std::recursive_mutex cluster_mutex;
 
 	int max_available_rang;     // если max_available_rang != old_max_available_rang, то надо перевесить

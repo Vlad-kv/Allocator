@@ -23,11 +23,11 @@ public:
 	void release_ptr();
 
 	~storage_ptr();
-// private:
+private:
 	long long get_use_count();
 	void set_use_count(long long val);
 	void inc_use_count();
-
+public:
 	std::atomic<storage_of_clusters*> atom_ptr;
 };
 
@@ -40,16 +40,19 @@ public:
 	static const int32_t MIN_RANG = CLUSTER_MIN_RANG;
 
 	friend void on_thread_exit(void *data);
+	friend class storage_ptr;
 private:
 	cluster *clusters[MAX_RANG + 1];
 public:
 	std::recursive_mutex storage_mutex;
 private:
+	std::mutex counter_mutex;
+	long long counter;
 
-	void add_to_begin(cluster *c, int rang); // только с блокировкой на storage_mutex и cluster_mutex!
+	void add_to_begin(cluster *c, int rang); // только с блокировкой на storage_mutex!
 
 public:
-	void cut(cluster *c, int rang); // только с блокировкой на storage_mutex и cluster_mutex!
+	void cut(cluster *c, int rang); // только с блокировкой на storage_mutex!
 
 	void overbalance(cluster *c); // только с блокировкой на storage_mutex и cluster_mutex!
 
@@ -68,7 +71,7 @@ public:
 	}
 };
 
-static_assert(sizeof(storage_of_clusters) + 8 <= (1<<12), "too big storage_of_clusters");
+static_assert(sizeof(storage_of_clusters) <= (1<<12), "too big storage_of_clusters");
 
 bool operator==(const storage_ptr& p_1, const storage_ptr& p_2);
 bool operator!=(const storage_ptr& p_1, const storage_ptr& p_2);
