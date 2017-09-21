@@ -10,7 +10,6 @@
 class cluster;
 
 #include "constants.h"
-
 #include "debug.h"
 #include "storage_of_clusters.h"
 
@@ -53,12 +52,8 @@ public:
 	char* set_next(char *ptr, char* val);
 private:
 
-	bool is_valid_ptr(char *ptr) {// debug
-		return ((storage <= ptr) && (ptr < storage + (1 << RANG_OF_CLUSTERS)));
-	}
-	bool is_valid_rang(int rang) {//debug
-		return ((MIN_RANG <= rang) && (rang <= MAX_RANG));
-	}
+	bool is_valid_ptr(char *ptr);// debug
+	bool is_valid_rang(int rang);//debug
 
 	void print_state() {// debug
 		for (int w = MAX_RANG; w >= MIN_RANG; w--) {
@@ -77,13 +72,7 @@ private:
 		print("\n");
 	}
 
-	void update_max_available_rang() { // пересчитывает max_available_rang, но сам ничего со своим расположением в storadge_of_clusters не делает
-		int w = MAX_RANG;
-		while ((w >= MIN_RANG) && (levels[w] == nullptr)) {
-			w--;
-		}
-		max_available_rang = w;
-	}
+	void update_max_available_rang(); // пересчитывает max_available_rang, но сам ничего со своим расположением в storadge_of_clusters не делает
 
 	void cut(char* block);
 	void add_to_begin(int level, char* block);
@@ -91,9 +80,7 @@ private:
 
 	cluster();
 public:
-	bool is_necessary_to_overbalance() {
-		return (max_available_rang != old_max_available_rang);
-	}
+	bool is_necessary_to_overbalance();
 	bool is_empty();
 
 	char *alloc(size_t size);

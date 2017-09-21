@@ -25,6 +25,20 @@ char* cluster::set_next(char *ptr, char* val) {
 	*(char**)(ptr + 2 * sizeof(void*)) = val;
 }
 
+bool cluster::is_valid_ptr(char *ptr) {// debug
+	return ((storage <= ptr) && (ptr < storage + (1 << RANG_OF_CLUSTERS)));
+}
+bool cluster::is_valid_rang(int rang) {//debug
+	return ((MIN_RANG <= rang) && (rang <= MAX_RANG));
+}
+void cluster::update_max_available_rang() {
+	int w = MAX_RANG;
+	while ((w >= MIN_RANG) && (levels[w] == nullptr)) {
+		w--;
+	}
+	max_available_rang = w;
+}
+
 void cluster::cut(char* block) {
 	// print("  In cut: ", block - storage, "\n");
 	char* prev = get_prev(block);
@@ -67,8 +81,7 @@ char* cluster::split(char* block, ll neded_level) {
 
 cluster::cluster() 
 : storage((char*)this) {
-	print(" In constructor \n        ##########\n        ##########\n        ##########\n\n");
-
+	// print(" In constructor \n        ##########\n        ##########\n        ##########\n\n");
 	lock_guard<recursive_mutex> lg(cluster_mutex);
 
 	max_available_rang = MAX_RANG;
@@ -91,7 +104,6 @@ cluster::cluster()
 
 char *cluster::alloc(size_t optimal_level) {
 	// print("In alloc: ", optimal_level, "\n");
-
 	int level = optimal_level;
 
 	my_assert(level <= MAX_RANG);
@@ -99,8 +111,6 @@ char *cluster::alloc(size_t optimal_level) {
 		level++;
 	}
 	if (level > MAX_RANG) {
-		// fatal_error("return nullptr\n");
-		
 		print(" return nullptr in alloc\n");
 		return nullptr;
 	}
@@ -111,11 +121,6 @@ char *cluster::alloc(size_t optimal_level) {
 	set_rang(to_alloc, -optimal_level);
 
 	update_max_available_rang();
-
-	// print(" allocated: ", to_alloc - storage, " ", to_alloc - storage + (1<<optimal_level),  "\n");
-	// print_state();
-	// print("----------------------------------\n\n");
-	// print("                        ", available_memory, "\n");
 	return to_alloc + SERV_DATA_SIZE;
 }
 
@@ -127,13 +132,12 @@ void cluster::free(char* ptr) {
 
 	my_assert(is_valid_ptr(ptr), "not valid ptr in free");
 
-	// print("In free: \n");
 	ll block_rang = -get_rang(ptr);
 
 	available_memory += 1<<block_rang;
 
 	my_assert(is_valid_rang(block_rang), "incorrect rang");
-	// print(" ", ptr - storage, " ", ptr - storage + (1<<block_rang), "\n");
+	
 	while (block_rang < MAX_RANG) {
 		char* twin = ((ptr - storage) ^ (1<<block_rang)) + storage;
 
@@ -149,10 +153,6 @@ void cluster::free(char* ptr) {
 	add_to_begin(block_rang, ptr);
 
 	update_max_available_rang();
-
-	// print_state();
-	// print("------------------------\n");
-	// print("                        ", available_memory, "\n");
 }
 
 char *cluster::try_to_realloc(char *ptr, size_t new_rang_of_block) {
@@ -160,6 +160,9 @@ char *cluster::try_to_realloc(char *ptr, size_t new_rang_of_block) {
 	return nullptr;
 }
 
+bool cluster::is_necessary_to_overbalance() {
+	return (max_available_rang != old_max_available_rang);
+}
 bool cluster::is_empty() {
 	return (available_memory == (1<<RANG_OF_CLUSTERS) - (1<<RESERVED_RANG));
 }

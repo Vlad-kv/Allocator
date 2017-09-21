@@ -8,7 +8,24 @@
 
 #include "constants.h"
 #include "debug.h"
+
 using namespace std;
+
+namespace big_blocks {
+	char *get_block(char *ptr) {
+		return (*(atomic<char*>*)(ptr - 3 * sizeof(char*))).load();
+	}
+	size_t get_size(char *ptr) {
+		return (*(atomic<size_t>*)(ptr - 2 * sizeof(char*))).load();
+	}
+	void set_block(char *ptr, char *block) {
+		(*(atomic<char*>*)(ptr - 3 * sizeof(char*))).store(block);
+	}
+	void set_size(char *ptr, size_t size) {
+		(*(atomic<size_t>*)(ptr - 2 * sizeof(char*))).store(size);
+	}
+}
+using namespace big_blocks;
 
 char *alloc_big_block(size_t size) {
 	size = size + (PAGE_SIZE - size % PAGE_SIZE) % PAGE_SIZE + PAGE_SIZE;
@@ -21,23 +38,20 @@ char *alloc_big_block(size_t size) {
 	}
 	char *res = block + PAGE_SIZE;
 
-	(*(atomic<char*>*)(res - 3 * sizeof(char*))).store(block);
-	(*(atomic<size_t>*)(res - 2 * sizeof(char*))).store(size);
+	set_block(res, block);
+	set_size(res, size);
 	
 	return res;
 }
 
 void free_big_block(char *ptr) {
-	char *block = (*(atomic<char*>*)(ptr - 3 * sizeof(char*))).load();
-	size_t size = (*(atomic<size_t>*)(ptr - 2 * sizeof(char*))).load();
-
-	int error = munmap(block, size);
+	int error = munmap(get_block(ptr), get_size(ptr));
 	my_assert(error == 0, "error in munmup in free_big_block: ", errno);
 }
 
 char *realloc_big_block(char *ptr, size_t new_size) {
-	char *block = *(char**)(ptr - 3 * sizeof(char*));
-	size_t size = *(size_t*)(ptr - 2 * sizeof(char*));
+	char *block = get_block(ptr);
+	size_t size = get_size(ptr);
 
 	size_t old_size = size - (ptr - block);
 
@@ -49,7 +63,7 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 		std::memcpy(res, ptr, std::min(new_size, old_size));
 		int error = munmap(block, size);
 
-		my_assert(error == 0, "error in munmup in free_big_block");
+		my_assert(error == 0, "error in munmup in realloc_big_block");
 		return res;
 	}
 	if (new_size <= MAX_SIZE_TO_ALLOC_IN_CLUSTERS) {
@@ -59,7 +73,7 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 		}
 		std::memcpy(res, ptr, std::min(new_size, old_size));
 		int error = munmap(block, size);
-		my_assert(error == 0, "error in munmup in free_big_block");
+		my_assert(error == 0, "error in munmup in realloc_big_block");
 		return res;
 	}
 	// TODO - понавтыкать if-ов чтобы не alloc_big_block каждый раз
@@ -69,12 +83,10 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 	}
 	std::memcpy(res, ptr, std::min(new_size, old_size));
 	int error = munmap(block, size);
-	my_assert(error == 0, "error in munmup in free_big_block");
+	my_assert(error == 0, "error in munmup in realloc_big_block");
 	return res;
 }
 
 size_t malloc_usable_size_big_block(char *ptr) {
-	char *block = (*(atomic<char*>*)(ptr - 3 * sizeof(char*))).load();
-	size_t size = (*(atomic<size_t>*)(ptr - 2 * sizeof(char*))).load();
-	return size - (ptr - block);
+	return get_size(ptr) - (ptr - get_block(ptr));
 }

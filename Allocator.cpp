@@ -3,7 +3,6 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <mutex>
-#include <atomic>
 #include <sys/mman.h>
 
 #include "debug.h"
@@ -16,8 +15,6 @@
 typedef unsigned long long ull;
 using namespace std;
 
-// recursive_mutex test_mutex;
-
 extern thread_local int num_alive_writers;
 
 atomic_bool is_initialized;
@@ -28,7 +25,6 @@ struct test_struct {
 	test_struct() {
 		is_constructors_begin_to_executing.store(true);
 		is_initialized.store(false);
-
 		// print_to_console("in test_struct\n");
 	}
 	~test_struct() {
@@ -39,8 +35,6 @@ struct test_struct {
 test_struct test;
 
 void initialize() {
-	// print_to_console("in initialize\n");
-
 	init_global_clusters_data();
 	init_slab_allocation();
 }
@@ -59,24 +53,21 @@ void check_init() {
 }
 
 extern "C" void *malloc(size_t size) {
-	// print_to_console("in malloc : ", size, "\n");
 	size = max(size, (size_t)8);
 
 	if (is_constructors_begin_to_executing.load() == false) {
 		// print_to_console("mmaping : ", size, "\n");
     	char *res = alloc_big_block(size);
-    	if (res == nullptr) { // debug
-    		fatal_error("return nullptr in malloc !!!\n");
+    	if (res == nullptr) {
+    		fatal_error("Error in malloc : nullptr when constructors not started to executing\n");
     	}
     	return res;
     }
-	// lock_guard<recursive_mutex> lg(test_mutex);
-
 	if (num_alive_writers > 0) {
 		// print_to_console("malloc for print : ", size, "\n");
 		char* res = alloc_big_block(size);
 		if (res == nullptr) {
-			WRITE("  Error in malloc for print : too small size of buffer\n");
+			WRITE("  Error in malloc for print : nullptr\n");
 			exit(1);
 		}
 		return res;
@@ -102,7 +93,7 @@ extern "C" void *malloc(size_t size) {
 
     check_init();
     
-	if ((size == 0) || (size > MAX_SIZE_TO_ALLOC)) {
+	if (size > MAX_SIZE_TO_ALLOC) {
 		return nullptr;
 	}
 
@@ -112,34 +103,22 @@ extern "C" void *malloc(size_t size) {
 	}
 
 	if (size <= MAX_SIZE_TO_ALLOC_IN_SLAB) {
-		char *res = alloc_block_in_slab(size);
-		if (res == nullptr) { // debug
-    		fatal_error("return nullptr in malloc !!!\n");
-    	}
-		return res;
+		return alloc_block_in_slab(size);
 	}
 	if (size <= MAX_SIZE_TO_ALLOC_IN_CLUSTERS) {
-		char *res = alloc_block_in_cluster(size);
-		if (res == nullptr) { // debug
-    		fatal_error("return nullptr in malloc !!!\n");
-    	}
-		return res;
+		return alloc_block_in_cluster(size);
 	}
-	res = alloc_big_block(size);
-	if (res == nullptr) { // debug
-		fatal_error("return nullptr in malloc !!!\n");
-	}
-	return res;
+	return alloc_big_block(size);
 }
 
 extern "C" void free(void *ptr) {
 	if (is_constructors_begin_to_executing.load() == false) {
 		// WRITE("free when is_constructors_begin_to_executing\n");
-		free_big_block((char*)ptr);
+		if (ptr != nullptr) {
+			free_big_block((char*)ptr);
+		}
     	return;
     }
-	// lock_guard<recursive_mutex> lg(test_mutex);
-
 	if (num_alive_writers > 0) {
 		// print_to_console("free catched for print");
 		if (ptr != nullptr) {
@@ -147,7 +126,6 @@ extern "C" void free(void *ptr) {
 		}
 		return;
 	}
-
 	print("free catched \n");
 	
     check_init();
@@ -171,12 +149,10 @@ extern "C" void free(void *ptr) {
 }
 
 extern "C" void *calloc(size_t nmemb, size_t size) {
-	// lock_guard<recursive_mutex> lg(test_mutex);
 
 	if (is_constructors_begin_to_executing.load() == false) {
 		// WRITE("calloc when not is_constructors_begin_to_executing\n");
 	} else {
-
 		if (num_alive_writers > 0) {
 			WRITE("in calloc for print\n");
 			char* res = alloc_big_block(nmemb * size);
@@ -192,27 +168,23 @@ extern "C" void *calloc(size_t nmemb, size_t size) {
 		print("in calloc : ", nmemb * size, "\n");
 		check_init();
 	}
-    
-	if ((nmemb == 0) || (size == 0) || (nmemb * size > MAX_SIZE_TO_ALLOC)) {
-		fatal_error("nullptr in calloc\n");
+	if ((nmemb == 0) || (size == 0)) {
+		nmemb = 1;
+		size = 8;
+	}
+
+	if (nmemb * size > MAX_SIZE_TO_ALLOC) {
 		return nullptr;
 	}
 	if ((nmemb * size) / size != nmemb) {
-		fatal_error("nullptr in calloc\n");
 		return nullptr;
 	}
-
 	char* res = (char*)malloc(nmemb * size);
     if (res == nullptr) {
-    	fatal_error("nullptr in calloc\n");
     	return nullptr;
     }
 
-    // TODO заменить на memset или понаставить if-ов
-
-    for (size_t w = 0; w < nmemb * size; w++) {
-    	res[w] = 0;
-    }
+    memset(res, 0, nmemb * size);
     return res;
 }
 
@@ -226,21 +198,16 @@ extern "C" void *realloc(void *ptr, size_t size) {
 		}
 		size_t copy_size = min(size, malloc_usable_size_big_block((char*)ptr));
 		
-		for (size_t w = 0; w < copy_size; w++) {
-			res[w] = ((char*)ptr)[w];
-		}
+		memcpy(res, ptr, copy_size);
 		free_big_block((char*)ptr);
     	return res;
     }
-	// lock_guard<recursive_mutex> lg(test_mutex);
-
 	print("realloc catched: ", size, "\n");
 
     check_init();
 
 	if (size == 0) {
-    	free(ptr);
-    	return nullptr;
+    	size = 8;
     }
     if (ptr == nullptr) {
     	return malloc(size);
@@ -249,40 +216,31 @@ extern "C" void *realloc(void *ptr, size_t size) {
     char* aligned_ptr = ((char*)ptr) - ((ull)ptr) % PAGE_SIZE;
 
     if (aligned_ptr == (char*)ptr) {
-    	char *res = realloc_big_block((char*)ptr, size);
-    	if (res == nullptr) { // debug
-    		fatal_error("nullptr in realloc\n");
-    	}
-    	return res;
+    	return realloc_big_block((char*)ptr, size);
     }
 
     int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
     if (num_pages < 0) {
-    	char *res = realloc_block_in_cluster((char*)ptr, size);
-    	if (res == nullptr) { // debug
-    		fatal_error("nullptr in realloc\n");
-    	}
-    	return res;
+    	return realloc_block_in_cluster((char*)ptr, size);
     } else {
     	return realloc_block_in_slab((char*)ptr, size);
     }
 }
 
 extern "C" void *reallocarray(void *ptr, size_t nmemb, size_t size) {
-	// lock_guard<recursive_mutex> lg(test_mutex);
+	if ((nmemb == 0) || (size == 0)) {
+		nmemb = 1;
+		size = 8;
+	}
 	if ((nmemb * size) / size != nmemb) {
-		if (nullptr) { // debug
-    		fatal_error("nullptr in reallocarray\n");
-    	}
 		return nullptr;
 	}
 	return realloc(ptr, nmemb * size);
 }
 
 extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
-	// lock_guard<recursive_mutex> lg(test_mutex);
-
+	
 	print("posix_memalign catched: ", alignment, " ", size, "\n");
 
     check_init();
@@ -302,10 +260,8 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
     	return EINVAL;
     }
     if (size == 0) {
-    	*memptr = nullptr;
-    	return 0;
+    	size = PAGE_SIZE;
     }
-    
     if (size % PAGE_SIZE != 0) {
     	size += PAGE_SIZE - size % PAGE_SIZE;
     }
@@ -331,15 +287,14 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 
 	char *res = block + PAGE_SIZE;
 
-    *(char**)(res - 3 * sizeof(char*)) = block;
-	*(size_t*)(res - 2 * sizeof(char*)) = size + PAGE_SIZE;
+	big_blocks::set_block(res, block);
+	big_blocks::set_size(res, size + PAGE_SIZE);
 
 	*memptr = res;
 	return 0;
 }
 
 extern "C" size_t malloc_usable_size(void *ptr) {
-	// lock_guard<recursive_mutex> lg(test_mutex);
 	check_init();
 
 	print("malloc_usable_size catched : \n");
@@ -354,12 +309,9 @@ extern "C" size_t malloc_usable_size(void *ptr) {
     }
     int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
-    print("get_num_of_pages_to_begin : ", num_pages, "\n");
-
     if (num_pages < 0) {
     	return malloc_usable_size_in_cluster((char*)ptr);
-    }
-    if (num_pages >= 0) {
+    } else {
     	return malloc_usable_size_in_slab((char*)ptr);
     }
 }
@@ -399,5 +351,3 @@ extern "C" void malloc_stats(void) {
 extern "C" void cfree(void *ptr) {
 	fatal_error("cfree not implemented");
 }
-
-// LD_PRELOAD=./libAllocator.so subl

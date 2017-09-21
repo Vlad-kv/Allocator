@@ -45,7 +45,7 @@ cluster* get_empty_cluster();
 
 void init_global_clusters_data() {
 	lock_guard<mutex> lg(storage_of_clusters_without_owners_mutex);
-	print("in init_global_clusters_data\n");
+	// print("in init_global_clusters_data\n");
 
 	storage_of_clusters_without_owners_ptr = storage_ptr::create();
 
@@ -103,7 +103,7 @@ void return_empty_cluster(cluster *c) {
 
 void on_thread_exit(void *v_data) {
 	thread_data *data = (thread_data*)v_data;
-	print("in on_thread_exit\n");
+	// print("in on_thread_exit\n");
 
 	if (data == nullptr) {
 		fatal_error("nullptr in data (on_thread_exit)\n");
@@ -135,11 +135,9 @@ void on_thread_exit(void *v_data) {
 
 void init_thread_local_cluster_data() {
 	if (data != nullptr) {
-		// print("after init_thread_local_cluster_data (already init)\n\n");
 		return;
 	}
-	
-	print("in init_thread_local_cluster_data\n");
+	// print("in init_thread_local_cluster_data\n");
 	
 	char *ptr = (char*)mmap(nullptr, 1<<RANG_OF_CLUSTERS, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	my_assert(ptr != MAP_FAILED, "mmap failed (in init_thread_local_cluster_data) with error : ", errno);
@@ -159,7 +157,6 @@ void init_thread_local_cluster_data() {
 	data->local_storage_ptr.inc_use_count();
 
 	data->is_it_fully_initialaised = true;
-	print("after init_thread_local_cluster_data (initialaised)\n\n");
 }
 
 char *add_free_cluster_and_get_block(int rang) {

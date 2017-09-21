@@ -33,7 +33,6 @@ void storage_of_clusters::add_to_begin(cluster *c, int rang) { // только �
 			lock_guard<mutex> lg(counter_mutex);
 			s_ptr.inc_use_count();
 		}
-
 		c->this_storage_of_clusters = s_ptr;
 	}
 	if (next != nullptr) {
@@ -106,9 +105,7 @@ storage_ptr storage_ptr::create() {
 		lock_guard<mutex> lg_2(res->counter_mutex);
 		res.set_use_count(1);
 	}
-
 	my_assert(res.atom_ptr.load() != nullptr, "Erorr - nullptr in storage_ptr::create\n");
-
 	return res;
 }
 
