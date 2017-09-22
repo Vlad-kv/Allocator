@@ -60,7 +60,7 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 		if (res == nullptr) {
 			return nullptr;
 		}
-		std::memcpy(res, ptr, std::min(new_size, old_size));
+		memcpy(res, ptr, min(new_size, old_size));
 		int error = munmap(block, size);
 
 		my_assert(error == 0, "error in munmup in realloc_big_block");
@@ -71,19 +71,31 @@ char *realloc_big_block(char *ptr, size_t new_size) {
 		if (res == nullptr) {
 			return nullptr;
 		}
-		std::memcpy(res, ptr, std::min(new_size, old_size));
+		memcpy(res, ptr, min(new_size, old_size));
 		int error = munmap(block, size);
 		my_assert(error == 0, "error in munmup in realloc_big_block");
 		return res;
 	}
-	// TODO - понавтыкать if-ов чтобы не alloc_big_block каждый раз
+
+	new_size += (PAGE_SIZE - new_size % PAGE_SIZE) % PAGE_SIZE;
+	if (new_size == old_size) {
+		return ptr;
+	}
+
+	if (new_size < old_size) {
+		int error = munmap(ptr + new_size, old_size - new_size);
+		my_assert(error == 0, "error in munmup in realloc_big_block (new_size < old_size) : ", errno);
+		set_size(ptr, size + old_size - new_size);
+		return ptr;
+	}
+	
 	char *res = alloc_big_block(new_size);
 	if (res == nullptr) {
 		return nullptr;
 	}
-	std::memcpy(res, ptr, std::min(new_size, old_size));
+	memcpy(res, ptr, min(new_size, old_size));
 	int error = munmap(block, size);
-	my_assert(error == 0, "error in munmup in realloc_big_block");
+	my_assert(error == 0, "error in munmup in realloc_big_block : ", errno);
 	return res;
 }
 

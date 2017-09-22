@@ -257,7 +257,6 @@ char *realloc_block_in_cluster(char *ptr, size_t new_size) {
 		c->free(ptr);
 		return res;
 	}
-
 	if (new_size > MAX_SIZE_TO_ALLOC_IN_CLUSTERS) {
 		char *res = alloc_big_block(new_size);
 		if (res == nullptr) {

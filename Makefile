@@ -34,6 +34,11 @@ start_nano: libAllocator.so
 	rm -f log.txt
 	LD_PRELOAD=./libAllocator.so nano
 
+start_nano_under_valgrind: libAllocator.so
+	rm -f log.txt
+	rm -f log_3.txt
+	valgrind --tool=memcheck --trace-children=yes --log-file=log_3.txt env LD_PRELOAD=./libAllocator.so nano
+
 start_valgrind: libAllocator.so test.exe
 	rm -f log_3.txt
 	valgrind --tool=helgrind --trace-children=yes --log-file=log_3.txt env LD_PRELOAD=./libAllocator.so ./test.exe

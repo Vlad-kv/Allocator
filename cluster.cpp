@@ -1,6 +1,6 @@
-#include "cluster.h"
-
 #include <atomic>
+
+#include "cluster.h"
 
 using namespace std;
 typedef unsigned long long ull;
@@ -111,7 +111,7 @@ char *cluster::alloc(size_t optimal_level) {
 		level++;
 	}
 	if (level > MAX_RANG) {
-		print(" return nullptr in alloc\n");
+		// print(" return nullptr in alloc\n");
 		return nullptr;
 	}
 
@@ -133,7 +133,6 @@ void cluster::free(char* ptr) {
 	my_assert(is_valid_ptr(ptr), "not valid ptr in free");
 
 	ll block_rang = -get_rang(ptr);
-
 	available_memory += 1<<block_rang;
 
 	my_assert(is_valid_rang(block_rang), "incorrect rang");
@@ -156,8 +155,36 @@ void cluster::free(char* ptr) {
 }
 
 char *cluster::try_to_realloc(char *ptr, size_t new_rang_of_block) {
-	// TODO реализовать честную попытку расширить на месте
-	return nullptr;
+	ptr -= SERV_DATA_SIZE;
+	int old_rang = -get_rang(ptr);
+
+	if (new_rang_of_block == old_rang) {
+		return ptr + SERV_DATA_SIZE;
+	}
+	if (new_rang_of_block < old_rang) {
+		available_memory += (1<<old_rang) - (1<<new_rang_of_block);
+
+		for (int w = old_rang - 1; w >= new_rang_of_block; w--) {
+			char *twin = ptr + (1<<w);
+			set_rang(twin, w);
+			add_to_begin(w, twin);
+		}
+		set_rang(ptr, -new_rang_of_block);
+		return ptr + SERV_DATA_SIZE;
+	}
+	for (int w = old_rang; w < new_rang_of_block; w++) {
+		char* twin = ((ptr - storage) ^ (1<<w)) + storage;
+		if ((twin < ptr) || (get_rang(twin) != w)) {
+			return nullptr;
+		}
+	}
+	for (int w = old_rang; w < new_rang_of_block; w++) {
+		char* twin = ((ptr - storage) ^ (1<<w)) + storage;
+		cut(twin);
+	}
+	available_memory += (1<<old_rang) - (1<<new_rang_of_block);
+	set_rang(ptr, -new_rang_of_block);
+	return ptr + SERV_DATA_SIZE;
 }
 
 bool cluster::is_necessary_to_overbalance() {
@@ -193,5 +220,6 @@ int calculate_optimal_rang(size_t size) {
 			return w;
 		}
 	}
+	fatal_error("invalid size in calculate_optimal_rang");
 	return -1;
 }

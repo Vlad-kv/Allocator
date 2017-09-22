@@ -55,23 +55,6 @@ private:
 	bool is_valid_ptr(char *ptr);// debug
 	bool is_valid_rang(int rang);//debug
 
-	void print_state() {// debug
-		for (int w = MAX_RANG; w >= MIN_RANG; w--) {
-			print(w, " : ");
-			if (levels[w] != nullptr) {
-				print(get_prev(levels[w]) - storage, "\n");
-				my_assert((get_prev(levels[w]) - storage) == -w, "incorrect level");
-			}
-			for (char* e = levels[w]; e != nullptr; e = get_next(e)) {
-				my_assert((MIN_RANG <= get_rang(e)) && (get_rang(e) <= MAX_RANG), "incorrect rang");
-
-				print(e - storage, " ", e - storage + (1<<w), " | ");
-			}
-			print("\n");
-		}
-		print("\n");
-	}
-
 	void update_max_available_rang(); // пересчитывает max_available_rang, но сам ничего со своим расположением в storadge_of_clusters не делает
 
 	void cut(char* block);

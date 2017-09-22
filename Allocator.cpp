@@ -67,7 +67,8 @@ extern "C" void *malloc(size_t size) {
 		// print_to_console("malloc for print : ", size, "\n");
 		char* res = alloc_big_block(size);
 		if (res == nullptr) {
-			WRITE("  Error in malloc for print : nullptr\n");
+			print_to_console("Error in malloc for print : nullptr\n");
+			// WRITE("  Error in malloc for print : nullptr\n");
 			exit(1);
 		}
 		return res;
@@ -113,14 +114,14 @@ extern "C" void *malloc(size_t size) {
 
 extern "C" void free(void *ptr) {
 	if (is_constructors_begin_to_executing.load() == false) {
-		// WRITE("free when is_constructors_begin_to_executing\n");
+		// WRITE("free when not is_constructors_begin_to_executing\n");
 		if (ptr != nullptr) {
 			free_big_block((char*)ptr);
 		}
     	return;
     }
 	if (num_alive_writers > 0) {
-		// print_to_console("free catched for print");
+		// print_to_console("free catched for print\n");
 		if (ptr != nullptr) {
 			free_big_block((char*)ptr);
 		}
@@ -149,28 +150,29 @@ extern "C" void free(void *ptr) {
 }
 
 extern "C" void *calloc(size_t nmemb, size_t size) {
-
+	if ((nmemb == 0) || (size == 0)) {
+		nmemb = 1;
+		size = 8;
+	}
 	if (is_constructors_begin_to_executing.load() == false) {
 		// WRITE("calloc when not is_constructors_begin_to_executing\n");
 	} else {
 		if (num_alive_writers > 0) {
-			WRITE("in calloc for print\n");
+			// WRITE("in calloc for print\n");
+			if ((nmemb * size) / nmemb != size) {
+				print_to_console("Too big size in calloc for print : ", nmemb, " ", size, "\n");
+				exit(1);
+			}
 			char* res = alloc_big_block(nmemb * size);
 			if (res == nullptr) {
 				WRITE("  Error in calloc for print : too small size of buffer\n");
 				exit(1);
 			}
-			for (size_t w = 0; w < nmemb * size; w++) {
-		    	res[w] = 0;
-		    }
+			memset(res, 0, nmemb * size);
 			return res;
 		}
 		print("in calloc : ", nmemb * size, "\n");
 		check_init();
-	}
-	if ((nmemb == 0) || (size == 0)) {
-		nmemb = 1;
-		size = 8;
 	}
 
 	if (nmemb * size > MAX_SIZE_TO_ALLOC) {
@@ -192,7 +194,10 @@ extern "C" void *realloc(void *ptr, size_t size) {
 	if (is_constructors_begin_to_executing.load() == false) {
 		// WRITE("realloc when is_constructors_begin_to_executing\n");
 		char* res = alloc_big_block(size);
-		
+		if (res == nullptr) {
+			free_big_block((char*)ptr);
+			return nullptr;
+		}
 		if (ptr == nullptr)  {
 			return res;
 		}
@@ -218,7 +223,6 @@ extern "C" void *realloc(void *ptr, size_t size) {
     if (aligned_ptr == (char*)ptr) {
     	return realloc_big_block((char*)ptr, size);
     }
-
     int num_pages = get_num_of_pages_to_begin(aligned_ptr);
 
     if (num_pages < 0) {

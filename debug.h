@@ -2,7 +2,7 @@
 #define DEBUG_H
 
 #define REMOVE_TEXT
-#define WRITE_TO_CONSOLE
+// #define WRITE_TO_CONSOLE
 
 #define WRITE(str) {\
 	int res = write(1, str, strlen(str));\
@@ -16,10 +16,11 @@
 #include <fstream>
 #include <unistd.h>
 #include <atomic>
+#include <cstring>
 
 extern std::recursive_mutex debug_mutex;
 extern thread_local int num_alive_writers;
-
+extern std::atomic_bool is_constructors_begin_to_executing;
 
 template<typename ...Args>
 void lok_print(std::ofstream &out, const Args &...args) {
@@ -75,6 +76,8 @@ void print_to_console(const char* a, const Other ...other) {
 
 	print_to_console(other...);
 }
+
+extern thread_local int no;
 
 template<typename ...Args>
 void print(const Args &...args) {

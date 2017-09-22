@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <regex.h>
+#include <sys/mman.h>
 
 #include <fstream>
 #include <chrono>
@@ -38,7 +39,7 @@ const int MAX_SIZE = 4000;
 const int NUM_TO_FREE_IN_BIG_FREE = 5;
 
 const int MIN_SIZE_TO_ALLOC = 10;
-const int MAX_SIZE_TO_ALLOC = 10000;
+const int MAX_SIZE_TO_ALLOC = 5000;
 
 const int MIN_MEMALIGN = 3, MAX_MEMALIGN = 15;
 
@@ -203,7 +204,7 @@ void big_check() {
 	}
 }
 
-const int STEP = 1;
+const int STEP = 10;
 
 void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
 		int num_modifications, int num_posix_memaligns) {
@@ -213,7 +214,7 @@ void test(int num_mallocs, int num_reallocs, int num_callocs, int num_free,
 	num_modifications += num_free;
 	num_posix_memaligns += num_modifications;
 
-	for (int w = 0; w < 200; w++) {
+	for (int w = 0; w < 20000; w++) {
 		if ((w != 0) && (w % STEP == 0)) {
 			{
 				lock_guard<mutex> lg(write_mutex);
@@ -300,22 +301,22 @@ void test_f() {
 }
 
 int main(int argc, char *argv[]) {
-	// malloc_original = (void* (*)(size_t size))malloc(-1);
-	// free_original = (void (*)(void *ptr))malloc(-2);
-	// calloc_original = (void* (*)(size_t, size_t))malloc(-3);
-	// realloc_original = (void* (*)(void *, size_t))malloc(-4);
-	// posix_memalign_original = (int (*)(void **memptr, size_t alignment, size_t size))malloc(-5);
+	malloc_original = (void* (*)(size_t size))malloc(-1);
+	free_original = (void (*)(void *ptr))malloc(-2);
+	calloc_original = (void* (*)(size_t, size_t))malloc(-3);
+	realloc_original = (void* (*)(void *, size_t))malloc(-4);
+	posix_memalign_original = (int (*)(void **memptr, size_t alignment, size_t size))malloc(-5);
 
-	// srand(0); // 0 (5)
+	srand(0); // 0 (5)
 
-	// test(30, 40, 30, 60, 20, 50);
+	test(30, 40, 30, 60, 20, 50);
 
-	thread t_1(test_f), t_2(test_f);
+	// thread t_1(test_f), t_2(test_f);
 
-	t_1.join();
-	t_2.join();
+	// t_1.join();
+	// t_2.join();
 
-	cout << "!!!\n";
+	// cout << "!!!\n";
 
 	return 0;
 }
