@@ -17,22 +17,9 @@ using namespace std;
 
 extern thread_local int num_alive_writers;
 
-atomic_bool is_initialized;
-atomic_bool is_constructors_begin_to_executing;
-mutex init_mutex;
-
-struct test_struct {
-	test_struct() {
-		is_constructors_begin_to_executing.store(true);
-		is_initialized.store(false);
-		// print_to_console("in test_struct\n");
-	}
-	~test_struct() {
-		// print_to_console("in ~test_struct\n");
-	}
-	int w = 1;
-};
-test_struct test;
+extern atomic_bool is_initialized;
+extern atomic_bool is_constructors_begin_to_executing;
+extern mutex init_mutex;
 
 void initialize() {
 	init_global_clusters_data();

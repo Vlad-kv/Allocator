@@ -77,8 +77,6 @@ void print_to_console(const char* a, const Other ...other) {
 	print_to_console(other...);
 }
 
-extern thread_local int no;
-
 template<typename ...Args>
 void print(const Args &...args) {
 	#ifndef REMOVE_TEXT

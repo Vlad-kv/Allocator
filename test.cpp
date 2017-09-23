@@ -300,16 +300,42 @@ void test_f() {
 	}
 }
 
+string get_error(int error) {
+	switch (error) {
+		case E2BIG: return "E2BIG";
+
+		case EACCES: return "EACCES";
+		case EAGAIN: return "EAGAIN";
+		case EFAULT: return "EFAULT";
+		case EINVAL: return "EINVAL";
+
+		case EIO: return "EIO";
+		case EISDIR: return "EISDIR";
+		case ELIBBAD: return "ELIBBAD";
+		case ELOOP: return "ELOOP";
+
+		case EMFILE: return "EMFILE";
+		case ENAMETOOLONG: return "ENAMETOOLONG";
+		case ENFILE: return "ENFILE";
+		case ENOENT: return "ENOENT";
+		case ENOEXEC: return "ENOEXEC";
+		case ENOMEM: return "ENOMEM";
+		case ENOTDIR: return "ENOTDIR";
+		case EPERM: return "EPERM";
+	}
+	return "uncnown error";
+}
+
 int main(int argc, char *argv[]) {
-	malloc_original = (void* (*)(size_t size))malloc(-1);
-	free_original = (void (*)(void *ptr))malloc(-2);
-	calloc_original = (void* (*)(size_t, size_t))malloc(-3);
-	realloc_original = (void* (*)(void *, size_t))malloc(-4);
-	posix_memalign_original = (int (*)(void **memptr, size_t alignment, size_t size))malloc(-5);
+	// malloc_original = (void* (*)(size_t size))malloc(-1);
+	// free_original = (void (*)(void *ptr))malloc(-2);
+	// calloc_original = (void* (*)(size_t, size_t))malloc(-3);
+	// realloc_original = (void* (*)(void *, size_t))malloc(-4);
+	// posix_memalign_original = (int (*)(void **memptr, size_t alignment, size_t size))malloc(-5);
 
-	srand(0); // 0 (5)
+	// srand(0); // 0 (5)
 
-	test(30, 40, 30, 60, 20, 50);
+	// test(30, 40, 30, 60, 20, 50);
 
 	// thread t_1(test_f), t_2(test_f);
 
@@ -317,6 +343,14 @@ int main(int argc, char *argv[]) {
 	// t_2.join();
 
 	// cout << "!!!\n";
+
+	cout << "in text.cpp\n";
+
+	int error = execvp("./test_2.exe", argv);
+
+	cout << "error : " << error << " " << get_error(errno) << "\n";
+
+	cout << "after execvp\n";
 
 	return 0;
 }

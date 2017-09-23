@@ -12,34 +12,24 @@
 #include "constants.h"
 
 using namespace std;
+using namespace clusters;
+
 typedef unsigned long long ull;
 
 const int MAX_NUMBER_OF_EMPTY_CLUSTERS = 1;
-const int BUFFER_TO_LOCAL_KEY_SIZE = 64;
-
-struct thread_data {
-	storage_of_clusters local_storage;
-
-	bool is_it_fully_initialaised = false;
-	pthread_key_t local_key;
-	storage_ptr local_storage_ptr;
-
-	char buffer_to_local_key[BUFFER_TO_LOCAL_KEY_SIZE];
-	size_t clusters_buffer_pos = 0;
-};
 
 static_assert(sizeof(thread_data) <= (1<<12), "too big thread_data");
 
-thread_local thread_data *data = nullptr;
+extern thread_local thread_data *data;
 
-storage_ptr storage_of_clusters_without_owners_ptr;
-mutex storage_of_clusters_without_owners_mutex;
+extern storage_ptr storage_of_clusters_without_owners_ptr;
+extern mutex storage_of_clusters_without_owners_mutex;
 
-int number_of_empty_clusters = 0;
-cluster *first_empty_cluster = nullptr;
-mutex empty_sorage_mutex;
+extern int number_of_empty_clusters;
+extern cluster *first_empty_cluster;
+extern mutex empty_sorage_mutex;
 
-storage_of_clusters storage_for_alloc_before_initialisation_completion;
+extern storage_of_clusters storage_for_alloc_before_initialisation_completion;
 
 cluster* get_empty_cluster();
 
@@ -52,7 +42,6 @@ void init_global_clusters_data() {
 	if (storage_of_clusters_without_owners_ptr.atom_ptr.load() == nullptr) {
 		fatal_error("nullptr in storage_of_clusters_without_owners_ptr (in init_global_clusters_data)");
 	}
-
 	storage_for_alloc_before_initialisation_completion.init();
 }
 
