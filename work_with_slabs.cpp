@@ -118,7 +118,7 @@ struct slab {
 };
 
 slab * slab_free_pages::get_slab(int elem_size, thread_slab_storage * parent) {
-	std::lock_guard<std::mutex> lok(m);
+	std::lock_guard < std::mutex > lok(m);
 	if (free_pages_count == 0) {
 #ifdef _WIN64
 		pages[free_pages_count++] = malloc(sizeof(slab));
@@ -134,7 +134,7 @@ slab * slab_free_pages::get_slab(int elem_size, thread_slab_storage * parent) {
 void slab_free_pages::recycle_slab(slab * slab) {
 	slab->parent->full.fetch_sub(1);
 	slab->~slab();
-	std::lock_guard<std::mutex> lok(m);
+	std::lock_guard < std::mutex > lok(m);
 	if (free_pages_count < FREE_PAGES_MAX) {
 		pages[free_pages_count++] = slab;
 	} else {
@@ -218,7 +218,7 @@ char *alloc_block_in_slab(size_t size) {
 
 constexpr long long PAGE_MASK = ~((long long) PAGE_SIZE - 1);
 
-void free_block_in_slab(void *ptr) {
+void free_block_in_slab(char *ptr) {
 	slab * slb = reinterpret_cast<slab *>(reinterpret_cast<long long>(ptr)
 			& PAGE_MASK);
 	if ((slb->SLAB_MAGIC & (~65535LL)) == SLAB_MAGIC) {
@@ -226,17 +226,17 @@ void free_block_in_slab(void *ptr) {
 	}
 }
 
-void *realloc_block_in_slab(void *ptr, size_t new_size) {
+char *realloc_block_in_slab(char *ptr, size_t new_size) {
 	slab * slb = reinterpret_cast<slab *>(reinterpret_cast<long long>(ptr)
 			& PAGE_MASK);
 	if ((slb->SLAB_MAGIC & (~65535LL)) == SLAB_MAGIC) {
 		if (new_size <= slb->elem_size) {
-			return ptr;
+			return reinterpret_cast<char *>(ptr);
 		} else {
 			void * new_ptr = malloc(new_size);
 			memcpy(new_ptr, ptr, slb->elem_size);
 			free_block_in_slab(ptr);
-			return new_ptr;
+			return reinterpret_cast<char *>(new_ptr);
 		}
 	} else {
 		return nullptr;
@@ -250,4 +250,17 @@ bool is_allocated_by_slab(void* ptr) {
 	slab * slb = reinterpret_cast<slab *>(reinterpret_cast<long long>(ptr)
 			& PAGE_MASK);
 	return ((slb->SLAB_MAGIC & (~65535LL)) == SLAB_MAGIC);
+}
+
+size_t malloc_usable_size_in_slab(char* ptr) {
+	if (ptr == nullptr) {
+		return 0;
+	}
+	slab * slb = reinterpret_cast<slab *>(reinterpret_cast<long long>(ptr)
+			& PAGE_MASK);
+	if (((slb->SLAB_MAGIC & (~65535LL)) == SLAB_MAGIC)) {
+		return slb->elem_size;
+	} else {
+		return 0;
+	}
 }

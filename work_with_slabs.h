@@ -11,6 +11,7 @@
 
 void init_slab_allocation();
 
+bool is_allocated_by_slab(void* ptr);
 char *alloc_block_in_slab(size_t size);
 void free_block_in_slab(char *ptr);
 char *realloc_block_in_slab(char *ptr, size_t new_size);
