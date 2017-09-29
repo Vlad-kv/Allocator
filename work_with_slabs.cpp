@@ -11,111 +11,41 @@ int select_slab[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2,
 		2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
 		4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5 };
 
-struct slab;
+extern slab_free_pages pages;
 
-template<class Node>
-struct atomic_stack {
-	std::atomic<Node *> m_Top;
-	void push(Node * val) {
-
-		Node * t = m_Top.load(std::memory_order_relaxed);
-		while (true) {
-			val->next.store(t, std::memory_order_relaxed);
-			if (m_Top.compare_exchange_weak(t, val, std::memory_order_release,
-					std::memory_order_relaxed))
-				return;
-		}
+slab::slab(unsigned char elem_size, thread_slab_storage * parent) {
+	this->SLAB_MAGIC = 0x7777777777777777;
+	this->elem_size = (unsigned char) elem_size;
+	this->parent = parent;
+	parent_alive = true;
+	freest.push(reinterpret_cast<mem_node *>(data));
+	freecnt.store(short(sizeof(data) / elem_size));
+	next = nullptr;
+	for (int i = elem_size; i + elem_size <= PAGE_SIZE - 40; i += elem_size) {
+		reinterpret_cast<mem_node *>(data + i - elem_size)->next.store(
+				reinterpret_cast<mem_node *>(data + i));
 	}
-	Node * pop() {
-		while (true) {
-			Node * t = m_Top.load(std::memory_order_relaxed);
-			if (t == nullptr)
-				return nullptr;  // stack is empty
+}
 
-			Node * pNext = t->next.load(std::memory_order_relaxed);
-			if (m_Top.compare_exchange_weak(t, pNext, std::memory_order_acquire,
-					std::memory_order_relaxed))
-				return t;
+void * slab::alloc_here() {
+	void * res = reinterpret_cast<void *>(freest.pop());
+	freecnt.fetch_sub(1);
+	return res;
+}
+
+void slab::free_here(void * ptr) {
+	freest.push(reinterpret_cast<mem_node *>(ptr));
+	int fcnt = freecnt.fetch_add(1);
+	if (fcnt == 0 && parent_alive) {
+		if (parent->alive.load()) {
+			parent->slb[select_slab[elem_size]].push(this);
+		} else {
+			parent_alive = false;
 		}
+	} else if (!parent_alive && fcnt == int(sizeof(data) / elem_size) - 1) {
+		pages.recycle_slab(this);
 	}
-};
-
-struct thread_slab_storage {
-
-	atomic_stack<slab> slb[6];
-	std::atomic_int full;
-	std::atomic<bool> alive;
-	void * alloc_in_storage(size_t size);
-
-	thread_slab_storage();
-	~thread_slab_storage();
-};
-
-struct slab_free_pages {
-	static const int FREE_PAGES_MAX = 200;
-	std::mutex m;
-	int free_pages_count;
-	void * pages[FREE_PAGES_MAX];
-	slab * get_slab(int elem_size, thread_slab_storage * parent);
-	void recycle_slab(slab * slab);
-};
-
-slab_free_pages pages;
-
-struct slab {
-	struct mem_node {
-		std::atomic<mem_node *> next;
-		mem_node();
-		mem_node(mem_node * val) :
-				next(val) {
-		}
-	};
-	union {
-		long long SLAB_MAGIC;
-		struct {
-			unsigned char elem_size;
-			bool parent_alive;
-		};
-	};
-//	std::atomic<void *> freeptr;
-	atomic_stack<mem_node> freest;
-	std::atomic_short freecnt;
-	std::atomic<slab *> next;
-	thread_slab_storage * parent;
-	char data[PAGE_SIZE - 40];
-	slab(unsigned char elem_size, thread_slab_storage * parent) {
-		this->SLAB_MAGIC = 0x7777777777777777;
-		this->elem_size = (unsigned char) elem_size;
-		this->parent = parent;
-		parent_alive = true;
-		freest.push(reinterpret_cast<mem_node *>(data));
-		freecnt.store(short(sizeof(data) / elem_size));
-		next = nullptr;
-		for (int i = elem_size; i + elem_size <= PAGE_SIZE - 40; i +=
-				elem_size) {
-			reinterpret_cast<mem_node *>(data + i - elem_size)->next.store(
-					reinterpret_cast<mem_node *>(data + i));
-		}
-	}
-	void * alloc_here() {
-		void * res = reinterpret_cast<void *>(freest.pop());
-		freecnt.fetch_sub(1);
-		return res;
-	}
-	void free_here(void * ptr) {
-		freest.push(reinterpret_cast<mem_node *>(ptr));
-		int fcnt = freecnt.fetch_add(1);
-		if (fcnt == 0 && parent_alive) {
-			if (parent->alive.load()) {
-				parent->slb[select_slab[elem_size]].push(this);
-			} else {
-				parent_alive = false;
-			}
-		} else if (!parent_alive && fcnt == int(sizeof(data) / elem_size) - 1) {
-			pages.recycle_slab(this);
-		}
-	}
-};
+}
 
 slab * slab_free_pages::get_slab(int elem_size, thread_slab_storage * parent) {
 	std::lock_guard < std::mutex > lok(m);
@@ -168,41 +98,37 @@ void * thread_slab_storage::alloc_in_storage(size_t size) {
 	return res;
 }
 
-thread_slab_storage storages[200];
+extern thread_slab_storage storages[200];
 
-std::atomic_int cr_storage;
+extern std::atomic_int cr_storage;
 
-struct thread_slab_ptr {
-	thread_slab_storage * storage;
-	thread_slab_ptr() {
-		storage = nullptr;
-		while (storage == nullptr) {
-			int id = cr_storage.fetch_add(1) % 200;
-			if (!storages[id].alive.load() && storages[id].full.load() == 0) {
-				storages[id].alive.store(true);
-				storage = storages + id;
-			}
-		}
-	}
-	thread_slab_storage * operator()() {
-		return storage;
-	}
-	~thread_slab_ptr() {
-		storage->alive.store(false);
-		for (int i = 0; i < 6; i++) {
-			slab * s = nullptr;
-			while ((s = storage->slb[i].pop()) != nullptr) {
-				do {
-					s->parent_alive = false;
-					s = s->next.load();
-				} while (s != nullptr);
-			}
+thread_slab_ptr::thread_slab_ptr() {
+	storage = nullptr;
+	while (storage == nullptr) {
+		int id = cr_storage.fetch_add(1) % 200;
+		if (!storages[id].alive.load() && storages[id].full.load() == 0) {
+			storages[id].alive.store(true);
+			storage = storages + id;
 		}
 	}
 }
-;
+thread_slab_storage * thread_slab_ptr::operator()() {
+	return storage;
+}
+thread_slab_ptr::~thread_slab_ptr() {
+	storage->alive.store(false);
+	for (int i = 0; i < 6; i++) {
+		slab * s = nullptr;
+		while ((s = storage->slb[i].pop()) != nullptr) {
+			do {
+				s->parent_alive = false;
+				s = s->next.load();
+			} while (s != nullptr);
+		}
+	}
+}
 
-thread_local thread_slab_ptr my_storage;
+extern thread_local thread_slab_ptr my_storage;
 
 void init_slab_allocation() {
 	static_assert(sizeof(select_slab) == (MAX_SLAB_ALLOC + 1) * sizeof(int), "SLAB resolving array has wrong size");

@@ -3,6 +3,7 @@
 
 #include "cluster.h"
 #include "work_with_clusters.h"
+#include "work_with_slabs.h"
 
 using namespace std;
 using namespace clusters;
@@ -33,6 +34,12 @@ storage_of_clusters storage_for_alloc_before_initialisation_completion;
 
 //----------------------------------
 
+//----- work_with_slabs.cpp
+
+slab_free_pages pages;
+thread_slab_storage storages[200];
+std::atomic_int cr_storage;
+thread_local thread_slab_ptr my_storage;
 // ....
 
 //----- last object to initialize --
