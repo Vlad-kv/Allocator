@@ -1,417 +1,253 @@
 #include "work_with_slabs.h"
 
 #define PAGE_SIZE 4096
-#define SLAB_MAGIC 0x7777
-#define MAX_ACTIVE_THREADS 200
 
-// 1 / 0.1
-#define SIZE_UPDATE_BORDER 10
+#define MAX_SLAB_ALLOC 64
 
-// 1 / 0.2
-#define SLAB_RECLAIM_BORDER 5
+constexpr long long SLAB_MAGIC = 0x7777777777770000;
 
-#define SLAB_CHECKS
+int slab_t_size[] = { 8, 16, 24, 32, 48, 64 };
+int select_slab[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2,
+		2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+		4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5 };
 
-#ifdef SLAB_CHECKS
-#include <cassert>
+struct slab;
+
+template<class Node>
+struct atomic_stack {
+	std::atomic<Node *> m_Top;
+	void push(Node * val) {
+
+		Node * t = m_Top.load(std::memory_order_relaxed);
+		while (true) {
+			val->next.store(t, std::memory_order_relaxed);
+			if (m_Top.compare_exchange_weak(t, val, std::memory_order_release,
+					std::memory_order_relaxed))
+				return;
+		}
+	}
+	Node * pop() {
+		while (true) {
+			Node * t = m_Top.load(std::memory_order_relaxed);
+			if (t == nullptr)
+				return nullptr;  // stack is empty
+
+			Node * pNext = t->next.load(std::memory_order_relaxed);
+			if (m_Top.compare_exchange_weak(t, pNext, std::memory_order_acquire,
+					std::memory_order_relaxed))
+				return t;
+		}
+	}
+};
+
+struct thread_slab_storage {
+
+	atomic_stack<slab> slb[6];
+	std::atomic_int full;
+	std::atomic<bool> alive;
+	void * alloc_in_storage(size_t size);
+
+	thread_slab_storage();
+	~thread_slab_storage();
+};
+
+struct slab_free_pages {
+	static const int FREE_PAGES_MAX = 200;
+	std::mutex m;
+	int free_pages_count;
+	void * pages[FREE_PAGES_MAX];
+	slab * get_slab(int elem_size, thread_slab_storage * parent);
+	void recycle_slab(slab * slab);
+};
+
+slab_free_pages pages;
+
+struct slab {
+	struct mem_node {
+		std::atomic<mem_node *> next;
+		mem_node();
+		mem_node(mem_node * val) :
+				next(val) {
+		}
+	};
+	union {
+		long long SLAB_MAGIC;
+		struct {
+			unsigned char elem_size;
+			bool parent_alive;
+		};
+	};
+//	std::atomic<void *> freeptr;
+	atomic_stack<mem_node> freest;
+	std::atomic_short freecnt;
+	std::atomic<slab *> next;
+	thread_slab_storage * parent;
+	char data[PAGE_SIZE - 40];
+	slab(unsigned char elem_size, thread_slab_storage * parent) {
+		this->SLAB_MAGIC = 0x7777777777777777;
+		this->elem_size = (unsigned char) elem_size;
+		this->parent = parent;
+		parent_alive = true;
+		freest.push(reinterpret_cast<mem_node *>(data));
+		freecnt.store(short(sizeof(data) / elem_size));
+		next = nullptr;
+		for (int i = elem_size; i + elem_size <= PAGE_SIZE - 40; i +=
+				elem_size) {
+			reinterpret_cast<mem_node *>(data + i - elem_size)->next.store(
+					reinterpret_cast<mem_node *>(data + i));
+		}
+	}
+	void * alloc_here() {
+		void * res = reinterpret_cast<void *>(freest.pop());
+		freecnt.fetch_sub(1);
+		return res;
+	}
+	void free_here(void * ptr) {
+		freest.push(reinterpret_cast<mem_node *>(ptr));
+		int fcnt = freecnt.fetch_add(1);
+		if (fcnt == 0 && parent_alive) {
+			if (parent->alive.load()) {
+				parent->slb[select_slab[elem_size]].push(this);
+			} else {
+				parent_alive = false;
+			}
+		} else if (!parent_alive && fcnt == int(sizeof(data) / elem_size) - 1) {
+			pages.recycle_slab(this);
+		}
+	}
+};
+
+slab * slab_free_pages::get_slab(int elem_size, thread_slab_storage * parent) {
+	std::lock_guard<std::mutex> lok(m);
+	if (free_pages_count == 0) {
+#ifdef _WIN64
+		pages[free_pages_count++] = malloc(sizeof(slab));
+#else
+		pages[free_pages_count++] = mmap(nullptr, sizeof(slab),
+		PROT_READ | PROT_WRITE,
+		MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
 #endif
-
-typedef short __int16_t;
-
-// required mutex order :
-// slab inside mutex -> global set mutex -> local set mutex -> slab outside mutex
-
-namespace myslab {
-
-    struct slab_data;
-
-    struct slab_info {
-        std::mutex mutex_inside; // for operations with elements of slab
-        std::mutex mutex_outside; // for operations with slabs
-        slab_info * next_slab = nullptr;
-        const unsigned int elem_size;
-        const int capacity;
-        const int data_blocks_count;
-        int size = 0;
-        int last_submitted_size = 0;
-        slab_data * assigned_store;
-        void * next_free;
-        slab_info(int elem_size, int block_count, slab_data * assigned,
-                  void * next_free) :
-                elem_size(elem_size), capacity(
-                block_count * ((PAGE_SIZE - 4) / elem_size)), data_blocks_count(
-                block_count), assigned_store(assigned), next_free(next_free) {
-        }
-    };
-
-    template<size_t elem_size>
-    struct slab {
-        static constexpr int elements_per_block = (PAGE_SIZE - 4) / elem_size;
-
-        struct slab_elem {
-            union {
-                char data[elem_size];
-                slab_elem * next_elem;
-            };
-        };
-        struct slab_data_block {
-            union {
-                char padding[PAGE_SIZE - 8];
-                slab_elem elements[elements_per_block];
-            };
-            __int16_t magic[4] = { 0, 0, SLAB_MAGIC, 0 };
-            slab_data_block() :
-                    slab_data_block(nullptr) {
-            }
-            slab_data_block(slab_elem * last_next) {
-                for (int i = 0; i < elements_per_block; i++) {
-                    elements[i].next_elem = elements + i + 1;
-                }
-                elements[elements_per_block - 1].next_elem = last_next;
-            }
-        };
-
-        union {
-            char padding[PAGE_SIZE - 8];
-            slab_info info;
-        };
-        __int16_t magic[4] = { 0, 0, SLAB_MAGIC, 0 };
-
-        void mark_elems_initial(int data_blocks_count) {
-            slab_data_block * dat = reinterpret_cast<slab_data_block *>(this);
-            for (int i = 1; i < data_blocks_count; i++) {
-                new (dat + i) slab_data_block(dat[i + 1].elements);
-            }
-            new (dat + data_blocks_count) slab_data_block();
-        }
-
-        slab(int data_blocks_count) :
-                info(elem_size, data_blocks_count, nullptr,
-                     reinterpret_cast<void *>(this + 1)) {
-            mark_elems_initial(data_blocks_count);
-
-            static_assert(elem_size >= 8, "elem_size should be >= 8");
-            static_assert(elem_size % 8 == 0, "elem_size should be a multiple of 8");
-            static_assert(sizeof(slab<elem_size>) == PAGE_SIZE, "slab is not page-sized");
-            static_assert(sizeof(slab_data_block) == PAGE_SIZE, "slab data block is not page-sized");
-            static_assert(sizeof(slab_elem) == elem_size, "because wtf");
-        }
-
-        void update_size(int diff);
-
-        void * get_element() {
-            std::lock_guard<std::mutex> lg(info.mutex_inside);
-            if (info.size == info.capacity) {
-                return nullptr;
-            } else {
-                slab_elem * next = reinterpret_cast<slab_elem *>(info.next_free);
-                info.next_free = reinterpret_cast<void *>(next->next_elem);
-                update_size(1);
-                return reinterpret_cast<void *>(next);
-            }
-        }
-
-        void reclaim_element(void * element) {
-#ifdef SLAB_CHECKS
-            assert(info.size > 0);
-            long long elem = reinterpret_cast<long long>(element);
-//		fprintf(stderr, "%llx %lld %lld\n", elem, sizeof(slab_elem), elem_size);
-            assert((elem & (PAGE_SIZE - 1)) % sizeof(slab_elem) == 0);
-            long long tis = reinterpret_cast<long long>(this);
-            assert((elem - tis) / PAGE_SIZE >= 1);
-            assert((elem - tis) / PAGE_SIZE <= info.data_blocks_count);
+	}
+	parent->full.fetch_add(1);
+	return new (pages[--free_pages_count]) slab(elem_size, parent);
+}
+void slab_free_pages::recycle_slab(slab * slab) {
+	slab->parent->full.fetch_sub(1);
+	slab->~slab();
+	std::lock_guard<std::mutex> lok(m);
+	if (free_pages_count < FREE_PAGES_MAX) {
+		pages[free_pages_count++] = slab;
+	} else {
+#ifdef _WIN64
+		free(slab);
+#else
+		munmap(slab, sizeof(slab));
 #endif
-            std::lock_guard<std::mutex> lg(info.mutex_inside);
-            slab_elem * it = reinterpret_cast<slab_elem *>(element);
-            it->next_elem = reinterpret_cast<slab_elem *>(info.next_free);
-            info.next_free = it;
-            update_size(-1);
-        }
+	}
+}
 
-        ~slab() {
-        }
-    };
+thread_slab_storage::thread_slab_storage() {
+	full.store(0);
+	alive.store(false);
+}
 
-    template<size_t elem_size>
-    slab_info * create_slab(int min_capacity);
+thread_slab_storage::~thread_slab_storage() {
+	assert(!alive.load());
+}
 
-    struct slab_set {
-        std::mutex mutex_set;
-        slab_info * next_aval_slab = nullptr;
-        int total_capacity = 0;
-        int total_size = 0;
-        template<size_t elem_size>
-        slab_info * get_extra_slab(slab_data * assigner_data) {
-            // TODO try to retrieve slab from global
-            slab_info * res = create_slab<elem_size>(
-                    std::max(200, total_capacity / 10));
-            res->assigned_store = assigner_data;
-            return res;
-        }
-        template<size_t elem_size>
-        void * alloc_in_slabs(slab_data * assigner_data) {
-//		fprintf(stderr, "start_alloc_slab\n");
-            slab_info * current_slab = nullptr;
-            std::unique_lock<std::mutex> set_lock(mutex_set);
-            if (next_aval_slab == nullptr) {
-                current_slab = next_aval_slab = get_extra_slab<elem_size>(
-                        assigner_data);
-//                fprintf(stderr, "new slab at %p\n", current_slab);
-                total_capacity += current_slab->capacity;
-            } else {
-                current_slab = next_aval_slab;
-            }
-            set_lock.unlock();
-//		fprintf(stderr, "start_slab_loop\n");
-            for (;;) {
-                slab<elem_size> * cslab =
-                        reinterpret_cast<slab<elem_size> *>(current_slab);
-                assert(cslab->magic[2] == SLAB_MAGIC);
-                assert(!set_lock.owns_lock());
-                void * try_alloc = cslab->get_element();
-                if (try_alloc != nullptr) {
-//				fprintf(stderr, "alloc at %p\n", try_alloc);
-                    return try_alloc;
-                } else {
-                    std::lock(set_lock, current_slab->mutex_outside);
-                    std::lock_guard<std::mutex>(current_slab->mutex_outside,
-                                                std::adopt_lock);
-                    next_aval_slab = current_slab->next_slab;
-                    current_slab->next_slab = current_slab;
-                    if (next_aval_slab == nullptr) {
-                        current_slab = next_aval_slab = get_extra_slab<elem_size>(
-                                assigner_data);
-                        fprintf(stderr, "new slab at %p\n", current_slab);
-                        total_capacity += current_slab->capacity;
-                    }
-                    current_slab = next_aval_slab;
-                    set_lock.unlock();
-                }
-            }
-            fprintf(stderr, "start new alloc");
-            return alloc_in_slabs<elem_size>(assigner_data);
-//		return nullptr;
-        }
-    };
+void * thread_slab_storage::alloc_in_storage(size_t size) {
+	int sslab = select_slab[size];
+	slab * s = slb[sslab].pop();
+	if (s == nullptr) {
+		s = pages.get_slab(slab_t_size[sslab], this);
+	}
+	void * res = s->alloc_here();
+	if (s->freecnt.load() != 0) {
+		slb[sslab].push(s);
+	}
+	return res;
+}
 
-    struct slab_data {
-        slab_set s[6];
-        int active = SLAB_MAGIC;
-        slab_set * getset(const slab<8> * slab) {
-            assert(slab->info.elem_size == 8);
-            return s + 0;
-        }
-        slab_set * getset(const slab<16> * slab) {
-            assert(slab->info.elem_size == 16);
-            return s + 1;
-        }
-        slab_set * getset(const slab<24> * slab) {
-            assert(slab->info.elem_size == 24);
-            return s + 2;
-        }
-        slab_set * getset(const slab<32> * slab) {
-            assert(slab->info.elem_size == 32);
-            return s + 3;
-        }
-        slab_set * getset(const slab<48> * slab) {
-            assert(slab->info.elem_size == 48);
-            return s + 4;
-        }
-        slab_set * getset(const slab<64> * slab) {
-            assert(slab->info.elem_size == 64);
-            return s + 5;
-        }
-        slab_data() {
-            // TODO constructor if needed
-        }
-        ~slab_data() {
-            active = 0;
-        }
+thread_slab_storage storages[200];
 
-    };
+std::atomic_int cr_storage;
 
-    template<size_t size_elem>
-    void slab<size_elem>::update_size(int diff) {
-        info.size += diff;
-//	fprintf(stderr, "updated size\n");
-        if (info.size - diff == info.capacity && info.next_slab == &info) {
-            fprintf(stderr, "adding slab to queue\n");
-            slab_set * st = info.assigned_store->getset(this);
-            std::lock(st->mutex_set, info.mutex_outside);
-            std::lock_guard<std::mutex> setlock(st->mutex_set, std::adopt_lock);
-            std::lock_guard<std::mutex> outlock(info.mutex_outside,
-                                                std::adopt_lock);
-            info.next_slab = st->next_aval_slab;
-            st->next_aval_slab = &info;
-        }
-        if (abs(info.size - info.last_submitted_size) * SIZE_UPDATE_BORDER
-            >= info.capacity) {
-//		fprintf(stderr, "diff is %d and capacity is %d\n",
-//				info.size - info.last_submitted_size, info.capacity);
-//		fprintf(stderr, "refreshing values\n");
-            slab_set * st = info.assigned_store->getset(this);
-            std::lock(st->mutex_set, info.mutex_outside);
-//		fprintf(stderr, "locked all\n");
-            std::lock_guard<std::mutex> setlock(st->mutex_set, std::adopt_lock);
-            std::lock_guard<std::mutex> outlock(info.mutex_outside,
-                                                std::adopt_lock);
-            int idiff = info.size - info.last_submitted_size;
-            st->total_size += idiff;
-            info.last_submitted_size = info.size;
-        }
-    }
+struct thread_slab_ptr {
+	thread_slab_storage * storage;
+	thread_slab_ptr() {
+		storage = nullptr;
+		while (storage == nullptr) {
+			int id = cr_storage.fetch_add(1) % 200;
+			if (!storages[id].alive.load() && storages[id].full.load() == 0) {
+				storages[id].alive.store(true);
+				storage = storages + id;
+			}
+		}
+	}
+	thread_slab_storage * operator()() {
+		return storage;
+	}
+	~thread_slab_ptr() {
+		storage->alive.store(false);
+		for (int i = 0; i < 6; i++) {
+			slab * s = nullptr;
+			while ((s = storage->slb[i].pop()) != nullptr) {
+				do {
+					s->parent_alive = false;
+					s = s->next.load();
+				} while (s != nullptr);
+			}
+		}
+	}
+}
+;
 
-    slab_data * global_slab_data;
-    size_t slab_data_last_index;
-
-    pthread_key_t key;
-
-    void * get_memory(int pages) {
-        void * mmap_res = mmap(nullptr, PAGE_SIZE * pages, PROT_READ | PROT_WRITE, /*MAP_SHARED*/ MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if(mmap_res == MAP_FAILED){
-            fatal_error("mmap failed\n");
-        }
-        return mmap_res;
-//        return _aligned_malloc(pages * PAGE_SIZE, PAGE_SIZE);
-//	return malloc(pages * PAGE_SIZE);
-    }
-
-    template<size_t elem_size>
-    slab_info * create_slab(int min_capacity) {
-        int data_blocks_cnt = (min_capacity - 1)
-                              / slab<elem_size>::elements_per_block + 1;
-        slab<elem_size> * ptr =
-                new (get_memory(data_blocks_cnt + 1)) slab<elem_size>(
-                        data_blocks_cnt);
-        return &ptr->info;
-    }
-
-    slab_data * create_slab_data() {
-        for (;;) {
-            if (global_slab_data[slab_data_last_index].active != SLAB_MAGIC) {
-                break;
-            }
-            if (slab_data_last_index == MAX_ACTIVE_THREADS) {
-                slab_data_last_index = 1;
-            } else {
-                slab_data_last_index++;
-            }
-        }
-        return new (global_slab_data + slab_data_last_index) slab_data();
-    }
-
-    slab_data * get_local_slab_data() {
-        void * slab = pthread_getspecific(key);
-        if (slab == nullptr) {
-            slab = create_slab_data();
-            pthread_setspecific(key, slab);
-        }
-        return reinterpret_cast<slab_data *>(slab);
-    }
-
-    slab_info * get_slab_from_ptr(char * ptr) {
-        long long it = reinterpret_cast<long long>(ptr);
-        it = it - (it & (PAGE_SIZE - 1)) - 4;
-        __int16_t * p = reinterpret_cast<__int16_t *>(it);
-        if (p[0] == SLAB_MAGIC) {
-            p++;
-            return reinterpret_cast<slab_info *>(it - PAGE_SIZE * p[0] - PAGE_SIZE
-                                                 + 4);
-        } else {
-            return nullptr;
-        }
-    }
-
-    void clean_slab_data(void * ptr) {
-        reinterpret_cast<slab_data *>(ptr)->~slab_data();
-    }
-
-} // end of namespace;
-
-using namespace myslab;
+thread_local thread_slab_ptr my_storage;
 
 void init_slab_allocation() {
-    pthread_key_create(&key, clean_slab_data);
-    slab_data_last_index = 1;
-    global_slab_data = reinterpret_cast<slab_data *>(get_memory(8));
-    new (global_slab_data) slab_data();
+	static_assert(sizeof(select_slab) == (MAX_SLAB_ALLOC + 1) * sizeof(int), "SLAB resolving array has wrong size");
+	static_assert(sizeof(slab) == PAGE_SIZE, "SLAB block size not equal to page size");
 }
 
 char *alloc_block_in_slab(size_t size) {
-//	fprintf(stderr, "start_alloc\n");
-    slab_data * set_lc = get_local_slab_data();
-    switch ((size - 1) / 8) {
-        case 0: // 8
-            return reinterpret_cast<char *>(set_lc->s[0].alloc_in_slabs<8>(set_lc));
-        case 1: // 16
-            return reinterpret_cast<char *>(set_lc->s[1].alloc_in_slabs<16>(set_lc));
-        case 2: // 24
-            return reinterpret_cast<char *>(set_lc->s[2].alloc_in_slabs<24>(set_lc));
-        case 3: // 32
-            return reinterpret_cast<char *>(set_lc->s[3].alloc_in_slabs<32>(set_lc));
-        case 4:
-        case 5:
-            return reinterpret_cast<char *>(set_lc->s[4].alloc_in_slabs<48>(set_lc));
-        case 6:
-        case 7:
-            return reinterpret_cast<char *>(set_lc->s[5].alloc_in_slabs<64>(set_lc));
-        default:
-            //	fatal_error("Not implemented");
-            return nullptr;
-    }
+	if (size > MAX_SLAB_ALLOC) {
+		return nullptr;
+	}
+	return reinterpret_cast<char *>(my_storage()->alloc_in_storage(size));
 }
 
-void free_block_in_slab(char *ptr, slab_info * info) {
-    if (info == nullptr) {
-        return;
-    }
-    switch ((info->elem_size - 1) / 8) {
-        case 0:
-            reinterpret_cast<slab<8>*>(info)->reclaim_element(
-                    reinterpret_cast<void*>(ptr));
-            break;
-        case 1:
-            reinterpret_cast<slab<16>*>(info)->reclaim_element(
-                    reinterpret_cast<void*>(ptr));
-            break;
-        case 2:
-            reinterpret_cast<slab<24>*>(info)->reclaim_element(
-                    reinterpret_cast<void*>(ptr));
-            break;
-        case 3:
-            reinterpret_cast<slab<32>*>(info)->reclaim_element(
-                    reinterpret_cast<void*>(ptr));
-            break;
-        case 4:
-        case 5:
-            reinterpret_cast<slab<48>*>(info)->reclaim_element(
-                    reinterpret_cast<void*>(ptr));
-            break;
-        case 6:
-        case 7:
-            reinterpret_cast<slab<64>*>(info)->reclaim_element(
-                    reinterpret_cast<void*>(ptr));
-            break;
-        default:
-            //	fatal_error("Not implemented");
-            break;
-    }
-//	fatal_error("Not implemented");
+constexpr long long PAGE_MASK = ~((long long) PAGE_SIZE - 1);
+
+void free_block_in_slab(void *ptr) {
+	slab * slb = reinterpret_cast<slab *>(reinterpret_cast<long long>(ptr)
+			& PAGE_MASK);
+	if ((slb->SLAB_MAGIC & (~65535LL)) == SLAB_MAGIC) {
+		slb->free_here(ptr);
+	}
 }
 
-void free_block_in_slab(char *ptr) {
-    slab_info * info = get_slab_from_ptr(ptr);
-    free_block_in_slab(ptr, info);
+void *realloc_block_in_slab(void *ptr, size_t new_size) {
+	slab * slb = reinterpret_cast<slab *>(reinterpret_cast<long long>(ptr)
+			& PAGE_MASK);
+	if ((slb->SLAB_MAGIC & (~65535LL)) == SLAB_MAGIC) {
+		if (new_size <= slb->elem_size) {
+			return ptr;
+		} else {
+			void * new_ptr = malloc(new_size);
+			memcpy(new_ptr, ptr, slb->elem_size);
+			free_block_in_slab(ptr);
+			return new_ptr;
+		}
+	} else {
+		return nullptr;
+	}
 }
 
-char *realloc_block_in_slab(char *ptr, size_t new_size) {
-    slab_info * info = get_slab_from_ptr(ptr);
-    if (info->elem_size >= new_size) {
-        return ptr;
-    } else {
-        char * new_ptr = (char *)malloc(new_size);
-        memcpy(new_ptr, ptr, info->elem_size);
-        free_block_in_slab(ptr, info);
-        return new_ptr;
-    }
+bool is_allocated_by_slab(void* ptr) {
+	if (ptr == nullptr) {
+		return false;
+	}
+	slab * slb = reinterpret_cast<slab *>(reinterpret_cast<long long>(ptr)
+			& PAGE_MASK);
+	return ((slb->SLAB_MAGIC & (~65535LL)) == SLAB_MAGIC);
 }

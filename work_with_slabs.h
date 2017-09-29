@@ -1,12 +1,13 @@
 #ifndef WORK_WITH_SLABS_H
 #define WORK_WITH_SLABS_H
 
+#include <cstdio>
 #include <mutex>
-#include <cstring>
-#include <cstdlib>
-#include "debug.h"
+#include <atomic>
 #include <pthread.h>
+#include <string.h>
 #include <sys/mman.h>
+#include <cassert>
 
 void init_slab_allocation();
 
