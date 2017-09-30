@@ -10,7 +10,7 @@ simple_start_gitk: libAllocatorSimple.so
 start_ltrace: libAllocator.so test.exe
 	rm -f log.txt
 	rm -f log_2.txt
-	ltrace -f -o log_2.txt env LD_PRELOAD=./libAllocator.so ./test.exe
+	ltrace -f -S -o log_2.txt env LD_PRELOAD=./libAllocator.so ./test.exe
 
 start_gitk: libAllocator.so
 	rm -f log.txt
@@ -52,12 +52,12 @@ start_chromium-browser: libAllocator.so
 start_chromium-browser_under_valgrind: libAllocator.so
 	rm -f log.txt
 	rm -f log_3.txt
-	valgrind --tool=memcheck --trace-children=yes --log-file=log_3.txt env LD_PRELOAD=./libAllocator.so chromium-browser
+	valgrind --tool=helgrind --trace-children=yes --log-file=log_3.txt env LD_PRELOAD=./libAllocator.so chromium-browser
 
-start_chromium-browser_under_ltrace:
+start_chromium-browser_under_ltrace: libAllocator.so
 	rm -f log.txt
 	rm -f log_2.txt
-	ltrace -f -o log_2.txt env LD_PRELOAD=./libAllocator.so chromium-browser
+	ltrace -f -S -o log_2.txt env LD_PRELOAD=./libAllocator.so chromium-browser
 
 #-----------------------
 
@@ -76,6 +76,12 @@ test.exe: test.cpp
 
 test_2.exe: test_2.cpp
 	g++ -o test_2.exe test_2.cpp -std=c++11 -ldl
+
+#---------------------
+
+start_my_convert: debug_convert.cpp
+	g++ -o debug_convert.exe debug_convert.cpp
+	./debug_convert.exe
 
 # execute_test_2: test_2.exe libAllocator.so log_simple_2.txt
 # 	rm -f log.txt

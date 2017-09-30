@@ -21,6 +21,8 @@ extern atomic_bool is_initialized;
 extern atomic_bool is_constructors_begin_to_executing;
 extern mutex init_mutex;
 
+extern recursive_mutex test_mutex;
+
 void initialize() {
 	init_global_clusters_data();
 	init_slab_allocation();
@@ -60,6 +62,7 @@ extern "C" void *malloc(size_t size) {
 		}
 		return res;
 	}
+	lock_guard<recursive_mutex> lg(test_mutex);
 
 	if (size == (size_t)-1) {   // debug
 		return dlsym(RTLD_NEXT, "malloc");
@@ -100,6 +103,7 @@ extern "C" void *malloc(size_t size) {
 }
 
 extern "C" void free(void *ptr) {
+
 	if (is_constructors_begin_to_executing.load() == false) {
 		// WRITE("free when not is_constructors_begin_to_executing\n");
 		if (ptr != nullptr) {
@@ -114,6 +118,7 @@ extern "C" void free(void *ptr) {
 		}
 		return;
 	}
+	lock_guard<recursive_mutex> lg(test_mutex);
 	print("free catched \n");
 	
     check_init();
@@ -137,6 +142,8 @@ extern "C" void free(void *ptr) {
 }
 
 extern "C" void *calloc(size_t nmemb, size_t size) {
+	lock_guard<recursive_mutex> lg(test_mutex);
+
 	if ((nmemb == 0) || (size == 0)) {
 		nmemb = 1;
 		size = 8;
@@ -178,6 +185,8 @@ extern "C" void *calloc(size_t nmemb, size_t size) {
 }
 
 extern "C" void *realloc(void *ptr, size_t size) {
+	lock_guard<recursive_mutex> lg(test_mutex);
+
 	if (is_constructors_begin_to_executing.load() == false) {
 		// WRITE("realloc when is_constructors_begin_to_executing\n");
 		char* res = alloc_big_block(size);
@@ -194,6 +203,7 @@ extern "C" void *realloc(void *ptr, size_t size) {
 		free_big_block((char*)ptr);
     	return res;
     }
+
 	print("realloc catched: ", size, "\n");
 
     check_init();
@@ -220,6 +230,7 @@ extern "C" void *realloc(void *ptr, size_t size) {
 }
 
 extern "C" void *reallocarray(void *ptr, size_t nmemb, size_t size) {
+	lock_guard<recursive_mutex> lg(test_mutex);
 	if ((nmemb == 0) || (size == 0)) {
 		nmemb = 1;
 		size = 8;
@@ -231,7 +242,8 @@ extern "C" void *reallocarray(void *ptr, size_t nmemb, size_t size) {
 }
 
 extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
-	
+	lock_guard<recursive_mutex> lg(test_mutex);
+
 	print("posix_memalign catched: ", alignment, " ", size, "\n");
 
     check_init();
@@ -286,6 +298,8 @@ extern "C" int posix_memalign(void **memptr, size_t alignment, size_t size) {
 }
 
 extern "C" size_t malloc_usable_size(void *ptr) {
+	lock_guard<recursive_mutex> lg(test_mutex);
+
 	check_init();
 
 	print("malloc_usable_size catched : \n");

@@ -14,6 +14,8 @@ atomic_bool is_initialized;
 atomic_bool is_constructors_begin_to_executing;
 mutex init_mutex;
 
+recursive_mutex test_mutex;
+
 //----- debug.cpp ------------------
 
 std::recursive_mutex debug_mutex;
