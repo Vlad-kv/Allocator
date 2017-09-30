@@ -1,7 +1,7 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-// #define REMOVE_TEXT
+#define REMOVE_TEXT
 // #define WRITE_TO_CONSOLE
 
 #define WRITE(str) {\

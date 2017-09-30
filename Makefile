@@ -45,22 +45,6 @@ start_valgrind: libAllocator.so test.exe
 
 #----------------------
 
-start_chromium-browser: libAllocator.so
-	rm -f log.txt
-	env LD_PRELOAD=./libAllocator.so chromium-browser
-
-start_chromium-browser_under_valgrind: libAllocator.so
-	rm -f log.txt
-	rm -f log_3.txt
-	valgrind --tool=helgrind --trace-children=yes --log-file=log_3.txt env LD_PRELOAD=./libAllocator.so chromium-browser
-
-start_chromium-browser_under_ltrace: libAllocator.so
-	rm -f log.txt
-	rm -f log_2.txt
-	ltrace -f -S -o log_2.txt env LD_PRELOAD=./libAllocator.so chromium-browser
-
-#-----------------------
-
 execute_test_2: test.exe test_2.exe libAllocator.so #log_simple_2.txt
 	rm -f log.txt
 	LD_PRELOAD=./libAllocator.so ./test.exe
@@ -86,6 +70,10 @@ start_my_convert: debug_convert.cpp
 # execute_test_2: test_2.exe libAllocator.so log_simple_2.txt
 # 	rm -f log.txt
 # 	LD_PRELOAD=./libAllocator.so ./test_2.exe
+
+start_firefox:
+	rm -f log.txt
+	env LD_PRELOAD=./libAllocator.so firefox
 
 libAllocator.so: global_objects.cpp work_with_big_blocks.h debug.h debug.cpp constants.h Allocator.cpp work_with_big_blocks.cpp work_with_slabs.cpp storage_of_clusters.cpp work_with_clusters.cpp cluster.cpp work_with_slabs.h storage_of_clusters.h work_with_clusters.h cluster.h
 	g++ -g -O0 -shared -o libAllocator.so global_objects.cpp debug.cpp Allocator.cpp work_with_big_blocks.cpp work_with_slabs.cpp storage_of_clusters.cpp work_with_clusters.cpp cluster.cpp -fPIC -ldl -std=c++11 -lpthread
