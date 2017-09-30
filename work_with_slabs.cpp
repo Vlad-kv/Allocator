@@ -82,7 +82,7 @@ thread_slab_storage::thread_slab_storage() {
 }
 
 thread_slab_storage::~thread_slab_storage() {
-	assert(!alive.load());
+	// assert(!alive.load());
 }
 
 void * thread_slab_storage::alloc_in_storage(size_t size) {
